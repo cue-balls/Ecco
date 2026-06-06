@@ -5,29 +5,26 @@
 
 
 int main() {
-    //GameState::greet();
     std::uint64_t num = 0;
     set(&num, 4);
     set(&num, 1);
     clear(&num, 4);
     
-    std::cout << read(num, 1) << std::endl;
+    //std::cout << read(num, 1) << std::endl;
 
 
     std::uint64_t board = 0;
-    for (int i = 32; i < 56; i++) {
+    for (int i = 0; i < 16; i++) {
         set(&board, i);
     }
 
     //view_bitboard(board);
-    GameState state;
+    //std::cout << std::endl;
+    
+    GameState state("rnbqkbnr/pppp1ppp/8/4p3/4P3/8/PPPP1PPP/RNBQKBNR w KQkq - 0 1");
     view_gamestate(state);
+    std::cout << state.white_to_move << std::endl;
 
-    for (int i = 0; i < 14; i++)
-    {
-        //view_bitboard(state.bitboards[i]);
-        //std::cout << std::endl;
-    }
 
 
     return 0;

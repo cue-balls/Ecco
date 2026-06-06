@@ -2,15 +2,10 @@
 //this engine will use the bitboard approach with 14 bitboards to represent the gamestate
 #include <iostream>
 #include <vector>
+#include <cctype>
 #include "GameState.h"
 #include "bitwise.h"
     
-
-    void GameState::greet() {
-        std::cout << "hello" << std::endl;
-    }
-
-
     GameState::GameState() : bitboards(14), white_to_move(true) {
         std::uint64_t pieces = 0;
         
@@ -87,4 +82,90 @@
         }
 
         bitboards[13] = pieces;
+    }
+
+
+    GameState::GameState(std::string FEN) : bitboards(14), white_to_move(true) {
+        int i;
+        for (i = 0; i < 14; i++) {
+            bitboards[i] = 0;
+        }
+
+        int square = 0;
+        for (i = 0; i < FEN.size(); i++)
+        {
+            char c = FEN[i];
+            if (c == ' ') {
+                break;
+            }
+
+            if (!isalnum(c)) {
+                continue;
+            }
+
+            if (std::isalpha(c))
+            {
+                switch (c) {
+                    case 'P': 
+                        set(&bitboards[0], square);
+                        set(&bitboards[6], square);
+                        break;
+                    case 'N': 
+                        set(&bitboards[1], square);
+                        set(&bitboards[6], square);
+                        break;
+                    case 'B': 
+                        set(&bitboards[2], square);
+                        set(&bitboards[6], square);
+                        break;
+                    case 'R': 
+                        set(&bitboards[3], square);
+                        set(&bitboards[6], square);
+                        break;
+                    case 'Q': 
+                        set(&bitboards[4], square);
+                        set(&bitboards[6], square);
+                        break;
+                    case 'K': 
+                        set(&bitboards[5], square);
+                        set(&bitboards[6], square);
+                        break;
+                    case 'p': 
+                        set(&bitboards[7], square);
+                        set(&bitboards[13], square);
+                        break;
+                    case 'n': 
+                        set(&bitboards[8], square);
+                        set(&bitboards[13], square);
+                        break;
+                    case 'b': 
+                        set(&bitboards[9], square);
+                        set(&bitboards[13], square);
+                        break;
+                    case 'r': 
+                        set(&bitboards[10], square);
+                        set(&bitboards[13], square);
+                        break;
+                    case 'q': 
+                        set(&bitboards[11], square);
+                        set(&bitboards[13], square);
+                        break;
+                    case 'k': 
+                        set(&bitboards[12], square);
+                        set(&bitboards[13], square);
+                        break;
+                }
+
+                square++;
+            }
+            else
+            {
+                int empty = c - '0';
+                square += empty;
+            }
+        }
+
+
+
+        white_to_move = (FEN[i + 1] == 'w');
     }

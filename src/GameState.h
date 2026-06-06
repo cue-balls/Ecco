@@ -8,8 +8,8 @@ class GameState {
         std::vector<std::uint64_t> bitboards;
         bool white_to_move;
     
-        static void greet();
         GameState();
+        GameState(std::string FEN);
 
     private:
 
