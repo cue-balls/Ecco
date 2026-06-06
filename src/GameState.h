@@ -9,6 +9,7 @@ class GameState {
         bool white_to_move;
     
         static void greet();
+        GameState();
 
     private:
 

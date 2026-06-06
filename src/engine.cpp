@@ -11,15 +11,23 @@ int main() {
     set(&num, 1);
     clear(&num, 4);
     
-    std::cout << num << std::endl;
+    std::cout << read(num, 1) << std::endl;
 
 
     std::uint64_t board = 0;
-    for (int i = 0; i < 16; i++) {
+    for (int i = 32; i < 56; i++) {
         set(&board, i);
     }
 
-    view_bitboard(board);
+    //view_bitboard(board);
+    GameState state;
+    view_gamestate(state);
+
+    for (int i = 0; i < 14; i++)
+    {
+        //view_bitboard(state.bitboards[i]);
+        //std::cout << std::endl;
+    }
 
 
     return 0;
