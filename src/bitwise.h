@@ -1,3 +1,5 @@
+//bitwise helper file
+
 #pragma once
 #include <cstdint>
 #include "GameState.h"

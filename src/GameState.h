@@ -1,3 +1,5 @@
+//GameState helper file
+
 #pragma once
 #include <iostream>
 #include <vector>
@@ -11,6 +13,8 @@ class GameState {
         GameState();
         GameState(std::string FEN);
         void view_gamestate();
+        static int square_to_int(std::string square);
+        static std::string int_to_square(int square);
 
     private:
 

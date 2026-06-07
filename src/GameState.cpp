@@ -1,14 +1,57 @@
 //class to represent the gamestate
 //this engine will use the bitboard approach with 14 bitboards to represent the gamestate
+//0->white pawns
+//1->white knights
+//2->white bishops
+//3->white rooks
+//4->white queens
+//5->white king
+//6->white pieces composite board
+//7->black pawns
+//8->black knights
+//9->black bishops
+//10->black rooks
+//11->black queens
+//12->black king
+//13->black pieces composite board
+
+
+//square 0 (lsb) represents a8 (top left)
+//square 63 (msb) represents h1 (bottom right)
+
 #include <iostream>
 #include <vector>
 #include <cctype>
 #include "GameState.h"
 #include "bitwise.h"
+
+
+//basic conversion functions
+int GameState::square_to_int(std::string square) {
+    int num = (int)(square[1] - '0');
+    int letter_pos = (int)(square[0] - 'a');
+    return (8 * (8 - num)) + letter_pos;
+}
+
+std::string GameState::int_to_square(int square) {
+    std::string out(2, '-');
+    char letter = 'a' + (square % 8);
+    char num = '0' + (8 - (square / 8));
+    out[0] = letter;
+    out[1] = num;
+
+    return out;
+}
     
+//default constructor
+//initializes to starting position
 GameState::GameState() : bitboards(14), white_to_move(true) {
+    
+    //pieces is used to construct the bitboards
+    //must be reset to 0 each time
+
     std::uint64_t pieces = 0;
-        
+    
     for (int i = 48; i < 56; i++) {
         set(&pieces, i);
     }
@@ -85,6 +128,11 @@ GameState::GameState() : bitboards(14), white_to_move(true) {
 }
 
 
+//arg constructor
+//takes FEN string and creates the position from there
+//this project will have a frontend that connects to this engine
+//on each move js will determine the FEN string for the current position and send it to the backend
+//this constructor serves to recreate the gamestate
 GameState::GameState(std::string FEN) : bitboards(14), white_to_move(true) {
     int i;
     for (i = 0; i < 14; i++) {
@@ -170,7 +218,8 @@ GameState::GameState(std::string FEN) : bitboards(14), white_to_move(true) {
     white_to_move = (FEN[i + 1] == 'w');
 }
 
-void GameState::view_gamestate() {
+void GameState::view_gamestate() 
+{
     std::vector<char> board_representation(64);
         
     for (int i = 0; i < 64; i++) {

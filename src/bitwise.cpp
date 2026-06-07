@@ -3,6 +3,11 @@
 #include "bitwise.h"
 #include "GameState.h"
 
+
+//basic bitwise stuff
+//only important consideration is that constants often must be cast to uint64_t
+
+
 void set(std::uint64_t* board, int position) {
     std::uint64_t mask = std::uint64_t(1) << position;
     *board |= mask;
