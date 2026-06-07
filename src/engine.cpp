@@ -22,7 +22,7 @@ int main() {
     //std::cout << std::endl;
     
     GameState state("rnbqkbnr/pppp1ppp/8/4p3/4P3/8/PPPP1PPP/RNBQKBNR w KQkq - 0 1");
-    view_gamestate(state);
+    state.view_gamestate();
     std::cout << state.white_to_move << std::endl;
 
 

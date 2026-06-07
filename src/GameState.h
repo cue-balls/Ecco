@@ -10,6 +10,7 @@ class GameState {
     
         GameState();
         GameState(std::string FEN);
+        void view_gamestate();
 
     private:
 
