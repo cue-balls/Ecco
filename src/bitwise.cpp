@@ -13,6 +13,11 @@ void set(std::uint64_t* board, int position) {
     *board |= mask;
 }
 
+void set(std::uint8_t* board, int position) {
+    std::uint64_t mask = std::uint8_t(1) << position;
+    *board |= mask;
+}
+
 void clear(std::uint64_t* board, int position) {
     std::uint64_t mask = ~(std::uint64_t(1) << position);
     *board &= mask;

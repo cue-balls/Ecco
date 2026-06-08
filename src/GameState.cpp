@@ -27,13 +27,13 @@
 
 
 //basic conversion functions
-int GameState::square_to_int(std::string square) {
+std::uint8_t GameState::square_to_int(std::string square) {
     int num = (int)(square[1] - '0');
     int letter_pos = (int)(square[0] - 'a');
     return (8 * (8 - num)) + letter_pos;
 }
 
-std::string GameState::int_to_square(int square) {
+std::string GameState::int_to_square(std::uint8_t square) {
     std::string out(2, '-');
     char letter = 'a' + (square % 8);
     char num = '0' + (8 - (square / 8));
@@ -45,7 +45,7 @@ std::string GameState::int_to_square(int square) {
     
 //default constructor
 //initializes to starting position
-GameState::GameState() : bitboards(14), white_to_move(true) {
+GameState::GameState() : bitboards(14), state_stack(), white_to_move(true) {
     
     //pieces is used to construct the bitboards
     //must be reset to 0 each time
@@ -125,6 +125,13 @@ GameState::GameState() : bitboards(14), white_to_move(true) {
     }
 
     bitboards[13] = pieces;
+
+    UndoState current_state {};
+    current_state.captured_piece = '-';
+    current_state.en_passant_square = 255;
+    current_state.castling_rights = 15;
+
+    state_stack.push_back(current_state);
 }
 
 
@@ -214,8 +221,40 @@ GameState::GameState(std::string FEN) : bitboards(14), white_to_move(true) {
     }
 
 
+    white_to_move = (FEN[++i] == 'w');
 
-    white_to_move = (FEN[i + 1] == 'w');
+    UndoState current_state {};
+    current_state.captured_piece = '-';
+
+    i += 2;
+    //std::cout << FEN[i] << std::endl;
+    std::uint8_t castling = 0;
+    while (FEN[i] != ' ')
+    {
+        char c = FEN[i];
+        switch (c) {
+            case 'K': set(&castling, 0); break;
+            case 'Q': set(&castling, 1); break;
+            case 'k': set(&castling, 2); break;
+            case 'q': set(&castling, 3); break;
+        }
+
+        i++;
+    }
+
+    current_state.castling_rights = castling;
+
+    if (FEN[++i] == '-')
+    {
+        current_state.en_passant_square = 255;
+    }
+    else
+    {
+        std::string en_passant = FEN.substr(i, i + 2);
+        current_state.en_passant_square = square_to_int(en_passant);
+    }
+    
+    state_stack.push_back(current_state);
 }
 
 void GameState::view_gamestate() 
