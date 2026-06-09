@@ -17,7 +17,8 @@ class GameState {
         std::vector<UndoState> state_stack;
         bool white_to_move;
 
-        inline static char piece_order[] = {'P', 'N', 'B', 'R', 'Q', 'K', '-', 'p', 'n', 'b', 'r', 'q', 'k'};
+        //piece lookup array
+        inline static char piece_order[] = {'P', 'N', 'B', 'R', 'Q', 'K', '-', 'p', 'n', 'b', 'r', 'q', 'k', '-'};
         
         GameState();
         GameState(std::string FEN);

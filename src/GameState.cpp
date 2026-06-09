@@ -129,6 +129,7 @@ GameState::GameState(std::string FEN) : bitboards(14), white_to_move(true) {
         bitboards[i] = 0;
     }
 
+    //board setup
     int square = 0;
     for (i = 0; i < FEN.size(); i++)
     {
@@ -141,6 +142,7 @@ GameState::GameState(std::string FEN) : bitboards(14), white_to_move(true) {
             continue;
         }
 
+        //lookup which bitboard to set and set the corresponding composite
         if (std::isalpha(c))
         {
             for (int j = 0; j < 14; j++) 
@@ -163,19 +165,34 @@ GameState::GameState(std::string FEN) : bitboards(14), white_to_move(true) {
         }
         else
         {
+            //adjust square position
             int empty = c - '0';
             square += empty;
         }
     }
 
-
+    //determine the active player
     white_to_move = (FEN[++i] == 'w');
 
+    //state stack helps to undo moves
+    //stores information about the history of the game so that moves can be unmade
+    //moves must be made and unmade in the search function in order to avoid performance issues
+    //every time the algorithm moves down through the tree a state is pushed and every time it moves up a state is popped
+    //last state always represents the position currently being analyzed
     UndoState current_state {};
     current_state.captured_piece = '-';
 
     i += 2;
     std::uint8_t castling = 0;
+
+    //tracking castling rights
+    //stored as an 8 bit integer
+    //first 4 bits represent castling rights (only tracks whether king/rook have moved)
+    //0001->white can castle kingside
+    //0010->white can castle queenside
+    //0100->black can castle kingside
+    //1000->black can castle queenside
+
     while (FEN[i] != ' ')
     {
         char c = FEN[i];
@@ -191,8 +208,11 @@ GameState::GameState(std::string FEN) : bitboards(14), white_to_move(true) {
 
     current_state.castling_rights = castling;
 
+    //getting en passant flag
+    //en passant is marked on the square that the pawn passes over (3rd and 6th ranks) where the capturing pawn lands
     if (FEN[++i] == '-')
     {
+        //value outside of 0-63 range represents an empty en passant flag
         current_state.en_passant_square = 255;
     }
     else
@@ -204,7 +224,7 @@ GameState::GameState(std::string FEN) : bitboards(14), white_to_move(true) {
     state_stack.push_back(current_state);
 }
 
-
+//determines what piece if any is on a given square
 char GameState::square_occupancy(std::uint8_t square)
 {
     for (int i = 0; i < 14; i++)
@@ -225,7 +245,7 @@ char GameState::square_occupancy(std::uint8_t square)
 }
 
 
-
+//debugging tool
 void GameState::view_gamestate() 
 {
     std::vector<char> board_representation(64);

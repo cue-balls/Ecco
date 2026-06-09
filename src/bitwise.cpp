@@ -28,6 +28,7 @@ int read(std::uint64_t board, int position) {
     return board & std::uint64_t(1);
 }
 
+//debugging tool
 void view_bitboard(std::uint64_t board) {
     for (int i = 0; i < 64; i++)
     {

@@ -1,3 +1,9 @@
+//main engine logic
+//frontend queries for each move after passing FEN string
+//alpha_beta_search attaches a numeric value to each move
+//highest value move is passed back to the frontend
+//this engine takes the centipawn approach to evaluating positions to avoid floating point math
+
 #include <iostream>
 #include <cstdint>
 #include "GameState.h"
