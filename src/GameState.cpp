@@ -25,23 +25,6 @@
 #include "GameState.h"
 #include "bitwise.h"
 
-
-//basic conversion functions
-std::uint8_t GameState::square_to_int(std::string square) {
-    int num = (int)(square[1] - '0');
-    int letter_pos = (int)(square[0] - 'a');
-    return (8 * (8 - num)) + letter_pos;
-}
-
-std::string GameState::int_to_square(std::uint8_t square) {
-    std::string out(2, '-');
-    char letter = 'a' + (square % 8);
-    char num = '0' + (8 - (square / 8));
-    out[0] = letter;
-    out[1] = num;
-
-    return out;
-}
     
 //default constructor
 //initializes to starting position
@@ -160,55 +143,20 @@ GameState::GameState(std::string FEN) : bitboards(14), white_to_move(true) {
 
         if (std::isalpha(c))
         {
-            switch (c) {
-                case 'P': 
-                    set(&bitboards[0], square);
-                    set(&bitboards[6], square);
-                    break;
-                case 'N': 
-                    set(&bitboards[1], square);
-                    set(&bitboards[6], square);
-                    break;
-                case 'B': 
-                    set(&bitboards[2], square);
-                    set(&bitboards[6], square);
-                    break;
-                case 'R': 
-                    set(&bitboards[3], square);
-                    set(&bitboards[6], square);
-                    break;
-                case 'Q': 
-                    set(&bitboards[4], square);
-                    set(&bitboards[6], square);
-                    break;
-                case 'K': 
-                    set(&bitboards[5], square);
-                    set(&bitboards[6], square);
-                    break;
-                case 'p': 
-                    set(&bitboards[7], square);
-                    set(&bitboards[13], square);
-                    break;
-                case 'n': 
-                    set(&bitboards[8], square);
-                    set(&bitboards[13], square);
-                    break;
-                case 'b': 
-                    set(&bitboards[9], square);
-                    set(&bitboards[13], square);
-                    break;
-                case 'r': 
-                    set(&bitboards[10], square);
-                    set(&bitboards[13], square);
-                    break;
-                case 'q': 
-                    set(&bitboards[11], square);
-                    set(&bitboards[13], square);
-                    break;
-                case 'k': 
-                    set(&bitboards[12], square);
-                    set(&bitboards[13], square);
-                    break;
+            for (int j = 0; j < 14; j++) 
+            {
+                if (piece_order[j] == c)
+                {
+                    set(&bitboards[j], square);
+                    if (std::isupper(c))
+                    {
+                        set(&bitboards[6], square);
+                    }
+                    else
+                    {
+                        set(&bitboards[13], square);
+                    }
+                }
             }
 
             square++;
@@ -227,7 +175,6 @@ GameState::GameState(std::string FEN) : bitboards(14), white_to_move(true) {
     current_state.captured_piece = '-';
 
     i += 2;
-    //std::cout << FEN[i] << std::endl;
     std::uint8_t castling = 0;
     while (FEN[i] != ' ')
     {
@@ -257,6 +204,28 @@ GameState::GameState(std::string FEN) : bitboards(14), white_to_move(true) {
     state_stack.push_back(current_state);
 }
 
+
+char GameState::square_occupancy(std::uint8_t square)
+{
+    for (int i = 0; i < 14; i++)
+    {
+        if (i == 6 || i == 13) {
+            continue;
+        }
+
+        std::uint64_t board = bitboards[i];
+
+        if (read(board, square)) {
+            return piece_order[i];
+        }
+    }
+
+
+    return '-';
+}
+
+
+
 void GameState::view_gamestate() 
 {
     std::vector<char> board_representation(64);
@@ -275,20 +244,7 @@ void GameState::view_gamestate()
         for (int j = 0; j < 64; j++)
         {
             if (read(board, j)) {
-                switch (i) {
-                    case 0: board_representation[j] = 'P'; break;
-                    case 1: board_representation[j] = 'N'; break;
-                    case 2: board_representation[j] = 'B'; break;
-                    case 3: board_representation[j] = 'R'; break;
-                    case 4: board_representation[j] = 'Q'; break;
-                    case 5: board_representation[j] = 'K'; break;
-                    case 7: board_representation[j] = 'p'; break;
-                    case 8: board_representation[j] = 'n'; break;
-                    case 9: board_representation[j] = 'b'; break;
-                    case 10: board_representation[j] = 'r'; break;
-                    case 11: board_representation[j] = 'q'; break;
-                    case 12: board_representation[j] = 'k'; break;
-                }
+                board_representation[j] = piece_order[i];
             }
         }
     }

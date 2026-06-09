@@ -24,10 +24,11 @@ int main() {
     GameState state("rnbqkbnr/pppp1ppp/8/4p3/4P3/8/PPPP1PPP/RNBQKBNR w KQkq f6 0 1");
     state.view_gamestate();
     //std::cout << state.white_to_move << std::endl;
-    //std::cout << GameState::square_to_int("e5") << std::endl;
-    //std::cout << GameState::int_to_square(63) << std::endl;
+    //std::cout << (int)square_to_int("e5") << std::endl;
+    //std::cout << int_to_square(63) << std::endl;
     std::cout << (int)(state.state_stack[0].castling_rights) << std::endl;
     std::cout << (int)(state.state_stack[0].en_passant_square) << std::endl;
+    std::cout << state.square_occupancy(4) << std::endl;
 
     return 0;
 }

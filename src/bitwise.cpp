@@ -40,3 +40,20 @@ void view_bitboard(std::uint64_t board) {
     }   
 }
 
+//basic conversion functions
+std::uint8_t square_to_int(std::string square) {
+    int num = (int)(square[1] - '0');
+    int letter_pos = (int)(square[0] - 'a');
+    return (8 * (8 - num)) + letter_pos;
+}
+
+std::string int_to_square(std::uint8_t square) {
+    std::string out(2, '-');
+    char letter = 'a' + (square % 8);
+    char num = '0' + (8 - (square / 8));
+    out[0] = letter;
+    out[1] = num;
+
+    return out;
+}
+

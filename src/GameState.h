@@ -16,12 +16,13 @@ class GameState {
         std::vector<std::uint64_t> bitboards;
         std::vector<UndoState> state_stack;
         bool white_to_move;
+
+        inline static char piece_order[] = {'P', 'N', 'B', 'R', 'Q', 'K', '-', 'p', 'n', 'b', 'r', 'q', 'k'};
         
         GameState();
         GameState(std::string FEN);
         void view_gamestate();
-        static std::uint8_t square_to_int(std::string square);
-        static std::string int_to_square(std::uint8_t square);
+        char square_occupancy(std::uint8_t square);
 
     private:
 
