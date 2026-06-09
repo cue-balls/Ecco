@@ -18,12 +18,14 @@ class GameState {
         bool white_to_move;
 
         //piece lookup array
-        inline static char piece_order[] = {'P', 'N', 'B', 'R', 'Q', 'K', '-', 'p', 'n', 'b', 'r', 'q', 'k', '-'};
+        inline static const char piece_order[] = {'P', 'N', 'B', 'R', 'Q', 'K', '-', 'p', 'n', 'b', 'r', 'q', 'k', '-'};
         
         GameState();
         GameState(std::string FEN);
         void view_gamestate();
         char square_occupancy(std::uint8_t square);
+
+        void make_move(std::uint16_t move);
 
     private:
 

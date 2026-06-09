@@ -245,6 +245,112 @@ char GameState::square_occupancy(std::uint8_t square)
 }
 
 
+
+void GameState::make_move(std::uint16_t move)
+{
+    UndoState undo;
+
+    std::uint8_t from_square = move & 63;
+    std::uint8_t target_square = (move >> 6) & 63;
+    std::uint8_t special_move_data = (move >> 12) & 15;
+    std::uint8_t castling = state_stack[state_stack.size() - 1].castling_rights;
+    std::uint8_t en_passant = 255;
+    char capture = '-';
+
+    for (int board = 0; board < 14; board++)
+    {
+        if (board == 6 || board == 13) {
+            continue;
+        }
+
+        if (read(bitboards[board], from_square))
+        {
+            set(&bitboards[board], target_square);
+            clear(&bitboards[board], from_square);
+            if (!read(special_move_data, 2)) {
+                break;
+            }
+        }
+        else if (read(bitboards[board], target_square))
+        {
+            clear(&bitboards[board], target_square);
+            capture = piece_order[board];
+        }
+    }
+    
+    if (castling != 0)
+    {
+        switch (from_square) {
+        case 0: clear(&castling, 3); break;
+        case 7: clear(&castling, 2); break;
+        case 56: clear(&castling, 1); break;
+        case 63: clear(&castling, 0); break;
+
+        case 4:
+            clear(&castling, 3);
+            clear(&castling, 2);
+            break;
+        
+        case 60:
+            clear(&castling, 1);
+            clear(&castling, 0);
+            break;
+        }
+    }
+    
+
+
+    if (special_move_data == 1) {
+        en_passant = (target_square + from_square) / 2;
+    }
+
+    if (special_move_data == 2) 
+    {
+        if (target_square == 62)
+        {
+            clear(&bitboards[3], 63);
+            set(&bitboards[3], 61);
+            clear(&castling, 0);
+            clear(&castling, 1);
+        }
+        else if (target_square == 6)
+        {
+            clear(&bitboards[10], 7);
+            set(&bitboards[10], 5);
+            clear(&castling, 2);
+            clear(&castling, 3);
+        }
+    }
+
+    if (special_move_data == 3)
+    {
+        if (target_square == 58)
+        {
+            clear(&bitboards[3], 56);
+            set(&bitboards[3], 59);
+            clear(&castling, 0);
+            clear(&castling, 1);
+        }
+        else if (target_square == 2)
+        {
+            clear(&bitboards[10], 0);
+            set(&bitboards[10], 3);
+            clear(&castling, 2);
+            clear(&castling, 3);
+        }
+    }
+
+
+
+
+    undo.captured_piece = capture;
+    undo.castling_rights = castling;
+    undo.en_passant_square = en_passant;
+    state_stack.push_back(undo);
+}
+
+
+
 //debugging tool
 void GameState::view_gamestate() 
 {

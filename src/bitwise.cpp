@@ -23,6 +23,11 @@ void clear(std::uint64_t* board, int position) {
     *board &= mask;
 }
 
+void clear(std::uint8_t* board, int position) {
+    std::uint64_t mask = ~(std::uint8_t(1) << position);
+    *board &= mask;
+}
+
 int read(std::uint64_t board, int position) {
     board = board >> position;
     return board & std::uint64_t(1);
