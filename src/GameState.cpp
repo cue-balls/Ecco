@@ -267,13 +267,36 @@ void GameState::make_move(std::uint16_t move)
         {
             set(&bitboards[board], target_square);
             clear(&bitboards[board], from_square);
-            if (!read(special_move_data, 2)) {
+
+            if (board < 6)
+            {
+                clear(&bitboards[6], from_square);
+                set(&bitboards[6], target_square);
+            }
+            else
+            {
+                clear(&bitboards[13], from_square);
+                set(&bitboards[13], target_square);
+            }
+
+            if (!read(special_move_data, 2)) 
+            {
                 break;
             }
         }
         else if (read(bitboards[board], target_square))
         {
             clear(&bitboards[board], target_square);
+            if (board < 6)
+            {
+                clear(&bitboards[6], target_square);
+            }
+            else
+            {
+                clear(&bitboards[13], target_square);
+            }
+            
+            
             capture = piece_order[board];
         }
     }
@@ -309,14 +332,18 @@ void GameState::make_move(std::uint16_t move)
         if (target_square == 62)
         {
             clear(&bitboards[3], 63);
+            clear(&bitboards[6], 63);
             set(&bitboards[3], 61);
+            set(&bitboards[6], 61);
             clear(&castling, 0);
             clear(&castling, 1);
         }
         else if (target_square == 6)
         {
             clear(&bitboards[10], 7);
+            clear(&bitboards[13], 7);
             set(&bitboards[10], 5);
+            set(&bitboards[13], 5);
             clear(&castling, 2);
             clear(&castling, 3);
         }
@@ -327,14 +354,18 @@ void GameState::make_move(std::uint16_t move)
         if (target_square == 58)
         {
             clear(&bitboards[3], 56);
+            clear(&bitboards[6], 56);
             set(&bitboards[3], 59);
+            set(&bitboards[6], 59);
             clear(&castling, 0);
             clear(&castling, 1);
         }
         else if (target_square == 2)
         {
             clear(&bitboards[10], 0);
+            clear(&bitboards[13], 0);
             set(&bitboards[10], 3);
+            set(&bitboards[13], 3);
             clear(&castling, 2);
             clear(&castling, 3);
         }
@@ -345,11 +376,13 @@ void GameState::make_move(std::uint16_t move)
         if (target_square >= 16 && target_square <= 23)
         {
             clear(&bitboards[7], target_square + 8);
+            clear(&bitboards[13], target_square + 8);
             capture = 'p';
         }
         else if (target_square >= 40 && target_square <= 47)
         {
             clear(&bitboards[0], target_square - 8);
+            clear(&bitboards[6], target_square - 8);
             capture = 'P';
         }
     }
