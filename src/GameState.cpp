@@ -340,6 +340,51 @@ void GameState::make_move(std::uint16_t move)
         }
     }
 
+    if (special_move_data == 5) 
+    {
+        if (target_square >= 16 && target_square <= 23)
+        {
+            clear(&bitboards[7], target_square + 8);
+            capture = 'p';
+        }
+        else if (target_square >= 40 && target_square <= 47)
+        {
+            clear(&bitboards[0], target_square - 8);
+            capture = 'P';
+        }
+    }
+
+
+    if (read(special_move_data, 3))
+    {
+        int color_shift = 0;
+        if (target_square >= 56) {
+            color_shift = 7;
+        }
+
+        switch (special_move_data) {
+            case 8:
+            case 12:
+                clear(&bitboards[0 + color_shift], target_square);
+                set(&bitboards[1 + color_shift], target_square);
+                break;
+            case 9:
+            case 13:
+                clear(&bitboards[0 + color_shift], target_square);
+                set(&bitboards[2 + color_shift], target_square);
+                break;
+            case 10:
+            case 14:
+                clear(&bitboards[0 + color_shift], target_square);
+                set(&bitboards[3 + color_shift], target_square);
+                break;
+            case 11:
+            case 15:
+                clear(&bitboards[0 + color_shift], target_square);
+                set(&bitboards[4 + color_shift], target_square);
+                break;
+        }
+    }
 
 
 
@@ -347,6 +392,8 @@ void GameState::make_move(std::uint16_t move)
     undo.castling_rights = castling;
     undo.en_passant_square = en_passant;
     state_stack.push_back(undo);
+
+    white_to_move = !white_to_move;
 }
 
 

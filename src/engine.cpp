@@ -27,18 +27,24 @@ int main() {
     //view_bitboard(board);
     //std::cout << std::endl;
     
-    GameState state("rnbqkbnr/pppp1ppp/8/4p3/4P3/8/PPPP1PPP/RNBQKBNR w KQkq f6 0 1");
+    GameState state("rnbqkbnr/ppp1pppp/8/3p4/4P3/8/PPPP1PPP/RNBQKBNR w KQkq f6 0 1");
 
     state.make_move(2942);
-    state.make_move(772);
-    state.make_move(3388);
+    state.make_move(2267);
+    state.make_move(6322);
+    state.make_move(23203);
+    state.make_move(6647);
+    state.make_move(19562);
+    state.make_move(3583);
+    state.make_move(65073);
 
     state.view_gamestate();
-    //std::cout << state.white_to_move << std::endl;
+    std::cout << state.white_to_move << std::endl;
     //std::cout << (int)square_to_int("e5") << std::endl;
     //std::cout << int_to_square(63) << std::endl;
     std::cout << (int)(state.state_stack[state.state_stack.size() - 1].castling_rights) << std::endl;
-    //std::cout << (int)(state.state_stack[0].en_passant_square) << std::endl;
+    std::cout << (int)(state.state_stack[state.state_stack.size() - 1].en_passant_square) << std::endl;
+    std::cout << (state.state_stack[state.state_stack.size() - 1].captured_piece) << std::endl;
     //std::cout << state.square_occupancy(4) << std::endl;
 
     return 0;
