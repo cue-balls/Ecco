@@ -26,6 +26,7 @@ class GameState {
         char square_occupancy(std::uint8_t square);
 
         void make_move(std::uint16_t move);
+        void unmake_move(std::uint16_t move);
 
     private:
 

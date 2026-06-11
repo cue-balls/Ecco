@@ -431,6 +431,110 @@ void GameState::make_move(std::uint16_t move)
 
 
 
+
+void GameState::unmake_move(std::uint16_t move)
+{
+    UndoState undo = state_stack[state_stack.size() - 1];
+    state_stack.pop_back();
+
+    std::uint8_t from_square = move & 63;
+    std::uint8_t target_square = (move >> 6) & 63;
+    std::uint8_t special_move_data = (move >> 12) & 15;
+    std::uint8_t captured_board;
+
+    if (read(special_move_data, 2))
+    {
+        for (int i = 0; i < 14; i++)
+        {
+            if (piece_order[i] == undo.captured_piece) {
+                captured_board = i;
+            }
+        }
+    }
+    
+    int board;
+    for (board = 0; board < 14; board++)
+    {
+        if (board == 6 || board == 13) {
+            continue;
+        }
+
+        if (read(bitboards[board], target_square))
+        {
+            clear(&bitboards[board], target_square);
+            set(&bitboards[board], from_square);
+            if (board < 6) 
+            {
+                clear(&bitboards[6], target_square);
+                set(&bitboards[6], from_square);
+            }
+            else
+            {
+                clear(&bitboards[13], target_square);
+                set(&bitboards[13], from_square);
+            }
+
+            if (read(special_move_data, 2) && special_move_data != 5) 
+            {
+                set(&bitboards[captured_board], target_square);
+
+                if (captured_board < 6)
+                {
+                    set(&bitboards[6], target_square);
+                }
+                else
+                {
+                    set(&bitboards[13], target_square);
+                }
+            }
+
+            break;
+        }
+    }
+
+
+
+    if (special_move_data == 2)
+    {
+        if (board < 6)
+        {
+            clear(&bitboards[3], 61);
+            clear(&bitboards[6], 61);
+            set(&bitboards[3], 63);
+            set(&bitboards[6], 63);
+        }
+        else
+        {
+            clear(&bitboards[10], 5);
+            clear(&bitboards[13], 5);
+            set(&bitboards[10], 7);
+            set(&bitboards[13], 7);
+        }
+    }
+
+    if (special_move_data == 3)
+    {
+        if (board < 6)
+        {
+            clear(&bitboards[3], 59);
+            clear(&bitboards[6], 59);
+            set(&bitboards[3], 56);
+            set(&bitboards[6], 56);
+        }
+        else
+        {
+            clear(&bitboards[10], 3);
+            clear(&bitboards[13], 3);
+            set(&bitboards[10], 0);
+            set(&bitboards[13], 0);
+        }
+    }
+
+    white_to_move = !white_to_move;
+}
+
+
+
 //debugging tool
 void GameState::view_gamestate() 
 {

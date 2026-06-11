@@ -34,6 +34,8 @@ int main() {
     state.make_move(2237);
     state.make_move(1350);
     state.make_move(12220);
+    
+    state.unmake_move(12220);
     //state.make_move(2267);
     //state.make_move(6322);
     //state.make_move(23203);
