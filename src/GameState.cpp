@@ -530,6 +530,51 @@ void GameState::unmake_move(std::uint16_t move)
         }
     }
 
+    if (special_move_data == 5)
+    {
+        if (board < 6)
+        {
+            set(&bitboards[7], target_square + 8);
+            set(&bitboards[13], target_square + 8);
+        }
+        else
+        {
+            set(&bitboards[0], target_square - 8);
+            set(&bitboards[6], target_square - 8);
+        }
+    }
+
+    std::uint8_t color_shift = 0;
+    if (board > 6) {
+        color_shift = 7;
+    }
+
+    if (read(special_move_data, 3))
+    {
+        switch (special_move_data) {
+            case 8:
+            case 12:
+                set(&bitboards[0 + color_shift], from_square);
+                clear(&bitboards[1 + color_shift], from_square);
+                break;
+            case 9:
+            case 13:
+                set(&bitboards[0 + color_shift], from_square);
+                clear(&bitboards[2 + color_shift], from_square);
+                break;
+            case 10:
+            case 14:
+                set(&bitboards[0 + color_shift], from_square);
+                clear(&bitboards[3 + color_shift], from_square);
+                break;
+            case 11:
+            case 15:
+                set(&bitboards[0 + color_shift], from_square);
+                clear(&bitboards[4 + color_shift], from_square);
+                break;
+        }
+    }
+
     white_to_move = !white_to_move;
 }
 

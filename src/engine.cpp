@@ -27,22 +27,35 @@ int main() {
     //view_bitboard(board);
     //std::cout << std::endl;
     
-    GameState state("rnbqkbnr/pppp1ppp/8/4p3/4P3/8/PPPP1PPP/RNBQKBNR w KQkq f6 0 1");
+    GameState state("rnbqkbnr/ppp1pppp/8/3p4/4P3/8/PPPP1PPP/RNBQKBNR w KQkq - 0 1");
 
     state.make_move(2942);
-    state.make_move(1153);
+    /*state.make_move(1153);
     state.make_move(2237);
     state.make_move(1350);
     state.make_move(12220);
     
     state.unmake_move(12220);
-    //state.make_move(2267);
-    //state.make_move(6322);
-    //state.make_move(23203);
-    //state.make_move(6647);
-    //state.make_move(19562);
-    //state.make_move(3583);
-    //state.make_move(65073);
+    state.unmake_move(1350);
+    state.unmake_move(2237);
+    state.unmake_move(1153);
+    state.unmake_move(2942); */
+    state.make_move(2267);
+    state.make_move(6322);
+    state.make_move(23203);
+    state.make_move(6647);
+    state.make_move(19562);
+    state.make_move(3583);
+    state.make_move(65073);
+
+    state.unmake_move(65073);
+    state.unmake_move(3583);
+    state.unmake_move(19562);
+    state.unmake_move(6647);
+    state.unmake_move(23203);
+    state.unmake_move(6322);
+    state.unmake_move(2267);
+    state.unmake_move(2942);
 
     state.view_gamestate();
     std::cout << std::endl;
