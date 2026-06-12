@@ -27,14 +27,14 @@ int main() {
     //view_bitboard(board);
     //std::cout << std::endl;
     
-    GameState state("rnbqkbnr/ppp1pppp/8/3p4/3p4/8/PPP1PPPP/RNBQKBNR w KQkq - 0 1");
+    GameState state("rnbqkbnr/pppppppp/3n1n2/2n3n1/4K3/2n3n1/PPPnPnPP/RNBQ1BNR w KQkq - 0 1");
 
-    state.make_move(2745);
-    state.make_move(1153);
-    state.make_move(1642);
-    state.make_move(2130);
-    state.make_move(17049);
-    state.make_move(19617);
+    //state.make_move(2745);
+    //state.make_move(1153);
+    //state.make_move(1642);
+    //state.make_move(2130);
+    //state.make_move(17049);
+    //state.make_move(19617);
     
 
     state.view_gamestate();
@@ -43,10 +43,10 @@ int main() {
     //std:: cout << std::endl;
     //view_bitboard(state.bitboards[13]);
 
-    std::cout << state.white_to_move << std::endl;
-    std::cout << (int)(state.state_stack[state.state_stack.size() - 1].castling_rights) << std::endl;
-    std::cout << (int)(state.state_stack[state.state_stack.size() - 1].en_passant_square) << std::endl;
-    std::cout << (state.state_stack[state.state_stack.size() - 1].captured_piece) << std::endl;
+    //std::cout << state.white_to_move << std::endl;
+    //std::cout << (int)(state.state_stack[state.state_stack.size() - 1].castling_rights) << std::endl;
+    //std::cout << (int)(state.state_stack[state.state_stack.size() - 1].en_passant_square) << std::endl;
+    //std::cout << (state.state_stack[state.state_stack.size() - 1].captured_piece) << std::endl;
     //std::cout << state.square_occupancy(4) << std::endl;
 
     std::vector<check_t> checks = state.get_checks(true);

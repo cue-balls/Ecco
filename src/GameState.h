@@ -29,6 +29,7 @@ class GameState {
         GameState(std::string FEN);
         void view_gamestate();
         char square_occupancy(std::uint8_t square);
+        std::vector<std::uint8_t> get_attack_ray(char attacking_piece, int attacking_square);
         std::vector<check_t> get_checks(bool white);
 
         void make_move(std::uint16_t move);

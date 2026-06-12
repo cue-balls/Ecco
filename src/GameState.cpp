@@ -172,6 +172,10 @@ GameState::GameState(std::string FEN) : bitboards(14), white_to_move(true) {
         }
     }
 
+    if (i >= FEN.size()) {
+        return;
+    }
+
     //determine the active player
     white_to_move = (FEN[++i] == 'w');
 
@@ -580,7 +584,67 @@ void GameState::unmake_move(std::uint16_t move)
 }
 
 
+std::vector<std::uint8_t> GameState::get_attack_ray(char attacking_piece, int attacking_square)
+{
+    std::vector<std::uint8_t> ray;
+    if (attacking_piece == 'n' || attacking_piece == 'N')
+    {
+        if (attacking_square > 15)
+        {
+            if (attacking_square % 8 != 0)
+            {
+                ray.push_back(attacking_square - 17);
+            }
 
+            if (attacking_square % 8 != 7)
+            {
+                ray.push_back(attacking_square - 15);
+            }
+        }
+
+        if (attacking_square < 48)
+        {
+            if (attacking_square % 8 != 0)
+            {
+                ray.push_back(attacking_square + 15);
+            }
+
+            if (attacking_square % 8 != 7)
+            {
+                ray.push_back(attacking_square + 17);
+            }
+        }
+
+        if (attacking_square > 7)
+        {
+            if (attacking_square % 8 > 1)
+            {
+                ray.push_back(attacking_square - 10);
+            }
+
+            if (attacking_square % 8 < 6)
+            {
+                ray.push_back(attacking_square - 6);
+            }
+        }
+    }
+
+    if (attacking_square < 56)
+        {
+            if (attacking_square % 8 > 1)
+            {
+                ray.push_back(attacking_square + 6);
+            }
+
+            if (attacking_square % 8 < 6)
+            {
+                ray.push_back(attacking_square + 10);
+            }
+        }
+
+
+    return ray;
+}
 
 std::vector<check_t> GameState::get_checks(bool white)
 {
@@ -591,7 +655,6 @@ std::vector<check_t> GameState::get_checks(bool white)
         color_shift = 7;
     }
 
-    int attacking_square;
     int king_square;
 
     for (int square = 0; square < 64; square++)
@@ -606,73 +669,13 @@ std::vector<check_t> GameState::get_checks(bool white)
     check_t check;
 
 
-    if (king_square > 15)
+    std::vector<std::uint8_t> ray = get_attack_ray('N', king_square);
+    for (std::uint8_t square : ray)
     {
-        if (king_square % 8 != 0 && read(bitboards[1 + color_shift], king_square - 17))
+        if (read(bitboards[1 + color_shift], square))
         {
             check.piece = 1 + color_shift;
-            check.square = king_square - 17;
-            found_checks.push_back(check);
-        }
-
-        if (king_square % 8 != 7 && read(bitboards[1 + color_shift], king_square - 15))
-        {
-            check.piece = 1 + color_shift;
-            check.square = king_square - 15;
-            found_checks.push_back(check);
-        }
-    }
-
-
-    if (king_square < 48)
-    {
-        if (king_square % 8 != 0 && read(bitboards[1 + color_shift], king_square + 15))
-        {
-            check.piece = 1 + color_shift;
-            check.square = king_square + 15;
-            found_checks.push_back(check);
-        }
-
-        if (king_square % 8 != 7 && read(bitboards[1 + color_shift], king_square + 17))
-        {
-            check.piece = 1 + color_shift;
-            check.square = king_square + 17;
-            found_checks.push_back(check);
-        }
-    }
-
-
-    if (king_square > 7)
-    {
-        if (king_square % 8 > 1 && read(bitboards[1 + color_shift], king_square - 10))
-        {
-            check.piece = 1 + color_shift;
-            check.square = king_square - 10;
-            found_checks.push_back(check);
-        }
-
-        if (king_square % 8 < 6 && read(bitboards[1 + color_shift], king_square - 6))
-        {
-            check.piece = 1 + color_shift;
-            check.square = king_square - 6;
-            found_checks.push_back(check);
-        }
-    }
-
-
-    if (king_square < 56)
-    {
-        if (king_square % 8 > 1 && read(bitboards[1 + color_shift], king_square + 6))
-        {
-            check.piece = 1 + color_shift;
-            check.square = king_square + 6;
-            found_checks.push_back(check);
-        }
-
-        if (king_square % 8 < 6 && read(bitboards[1 + color_shift], king_square + 10))
-        {
-            check.piece = 1 + color_shift;
-            check.square = king_square + 10;
+            check.square = square;
             found_checks.push_back(check);
         }
     }
