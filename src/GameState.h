@@ -11,6 +11,11 @@ struct UndoState {
     std::uint8_t castling_rights;
 };
 
+struct check_t {
+    std::uint8_t piece;
+    std::uint8_t square;
+};
+
 class GameState {
     public:
         std::vector<std::uint64_t> bitboards;
@@ -24,6 +29,7 @@ class GameState {
         GameState(std::string FEN);
         void view_gamestate();
         char square_occupancy(std::uint8_t square);
+        std::vector<check_t> get_checks(bool white);
 
         void make_move(std::uint16_t move);
         void unmake_move(std::uint16_t move);

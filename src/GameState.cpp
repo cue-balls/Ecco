@@ -25,6 +25,7 @@
 #include "GameState.h"
 #include "bitwise.h"
 
+
     
 //default constructor
 //initializes to starting position
@@ -576,6 +577,108 @@ void GameState::unmake_move(std::uint16_t move)
     }
 
     white_to_move = !white_to_move;
+}
+
+
+
+
+std::vector<check_t> GameState::get_checks(bool white)
+{
+    std::vector<check_t> found_checks;
+
+    int color_shift = 0;
+    if (white) {
+        color_shift = 7;
+    }
+
+    int attacking_square;
+    int king_square;
+
+    for (int square = 0; square < 64; square++)
+    {
+        if (read(bitboards[12 - color_shift], square))
+        {
+            king_square = square;
+            break;
+        }
+    }
+
+    check_t check;
+
+
+    if (king_square > 15)
+    {
+        if (king_square % 8 != 0 && read(bitboards[1 + color_shift], king_square - 17))
+        {
+            check.piece = 1 + color_shift;
+            check.square = king_square - 17;
+            found_checks.push_back(check);
+        }
+
+        if (king_square % 8 != 7 && read(bitboards[1 + color_shift], king_square - 15))
+        {
+            check.piece = 1 + color_shift;
+            check.square = king_square - 15;
+            found_checks.push_back(check);
+        }
+    }
+
+
+    if (king_square < 48)
+    {
+        if (king_square % 8 != 0 && read(bitboards[1 + color_shift], king_square + 15))
+        {
+            check.piece = 1 + color_shift;
+            check.square = king_square + 15;
+            found_checks.push_back(check);
+        }
+
+        if (king_square % 8 != 7 && read(bitboards[1 + color_shift], king_square + 17))
+        {
+            check.piece = 1 + color_shift;
+            check.square = king_square + 17;
+            found_checks.push_back(check);
+        }
+    }
+
+
+    if (king_square > 7)
+    {
+        if (king_square % 8 > 1 && read(bitboards[1 + color_shift], king_square - 10))
+        {
+            check.piece = 1 + color_shift;
+            check.square = king_square - 10;
+            found_checks.push_back(check);
+        }
+
+        if (king_square % 8 < 6 && read(bitboards[1 + color_shift], king_square - 6))
+        {
+            check.piece = 1 + color_shift;
+            check.square = king_square - 6;
+            found_checks.push_back(check);
+        }
+    }
+
+
+    if (king_square < 56)
+    {
+        if (king_square % 8 > 1 && read(bitboards[1 + color_shift], king_square + 6))
+        {
+            check.piece = 1 + color_shift;
+            check.square = king_square + 6;
+            found_checks.push_back(check);
+        }
+
+        if (king_square % 8 < 6 && read(bitboards[1 + color_shift], king_square + 10))
+        {
+            check.piece = 1 + color_shift;
+            check.square = king_square + 10;
+            found_checks.push_back(check);
+        }
+    }
+
+
+    return found_checks;
 }
 
 
