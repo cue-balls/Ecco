@@ -584,71 +584,159 @@ void GameState::unmake_move(std::uint16_t move)
 }
 
 
-std::vector<std::uint8_t> GameState::get_attack_ray(char attacking_piece, int attacking_square)
+std::vector<std::uint8_t> GameState::get_attack_ray(char attacking_piece, std::uint8_t origin)
 {
     std::vector<std::uint8_t> ray;
-    if (attacking_piece == 'n' || attacking_piece == 'N')
+
+    int color_shift = 0;
+    if (std::islower(attacking_piece)) {
+        color_shift = 7;
+    }
+
+    if (attacking_piece == 'N' || attacking_piece == 'n')
     {
-        if (attacking_square > 15)
+        if (origin > 15)
         {
-            if (attacking_square % 8 != 0)
+            if (origin % 8 != 0)
             {
-                ray.push_back(attacking_square - 17);
+                ray.push_back(origin - 17);
             }
 
-            if (attacking_square % 8 != 7)
+            if (origin % 8 != 7)
             {
-                ray.push_back(attacking_square - 15);
+                ray.push_back(origin - 15);
             }
         }
 
-        if (attacking_square < 48)
+        if (origin < 48)
         {
-            if (attacking_square % 8 != 0)
+            if (origin % 8 != 0)
             {
-                ray.push_back(attacking_square + 15);
+                ray.push_back(origin + 15);
             }
 
-            if (attacking_square % 8 != 7)
+            if (origin % 8 != 7)
             {
-                ray.push_back(attacking_square + 17);
+                ray.push_back(origin + 17);
             }
         }
 
-        if (attacking_square > 7)
+        if (origin > 7)
         {
-            if (attacking_square % 8 > 1)
+            if (origin % 8 > 1)
             {
-                ray.push_back(attacking_square - 10);
+                ray.push_back(origin - 10);
             }
 
-            if (attacking_square % 8 < 6)
+            if (origin % 8 < 6)
             {
-                ray.push_back(attacking_square - 6);
+                ray.push_back(origin - 6);
+            }
+        }
+
+        if (origin < 56)
+        {
+            if (origin % 8 > 1)
+            {
+                ray.push_back(origin + 6);
+            }
+
+            if (origin % 8 < 6)
+            {
+                ray.push_back(origin + 10);
             }
         }
     }
+    else if (attacking_piece == 'R' || attacking_piece == 'r')
+    {
+        std::uint8_t attacking_square = origin;
 
-    if (attacking_square < 56)
+        while (attacking_square % 8 != 0)
         {
-            if (attacking_square % 8 > 1)
-            {
-                ray.push_back(attacking_square + 6);
-            }
+            attacking_square--;
 
-            if (attacking_square % 8 < 6)
+            if (read(bitboards[6 + color_shift], attacking_square))
             {
-                ray.push_back(attacking_square + 10);
+                break;
+            }
+            else if (read(bitboards[13 - color_shift], attacking_square))
+            {
+                ray.push_back(attacking_square);
+                break;
+            }
+            else
+            {
+                ray.push_back(attacking_square);
             }
         }
+
+        attacking_square = origin;
+        while (attacking_square % 8 != 7)
+        {
+            attacking_square++;
+
+            if (read(bitboards[6 + color_shift], attacking_square))
+            {
+                break;
+            }
+            else if (read(bitboards[13 - color_shift], attacking_square))
+            {
+                ray.push_back(attacking_square);
+                break;
+            }
+            else
+            {
+                ray.push_back(attacking_square);
+            }
+        }
+
+        attacking_square = origin;
+        while (attacking_square > 7)
+        {
+            attacking_square -= 8;
+
+            if (read(bitboards[6 + color_shift], attacking_square))
+            {
+                break;
+            }
+            else if (read(bitboards[13 - color_shift], attacking_square))
+            {
+                ray.push_back(attacking_square);
+                break;
+            }
+            else
+            {
+                ray.push_back(attacking_square);
+            }
+        }
+
+        attacking_square = origin;
+        while (attacking_square < 56)
+        {
+            attacking_square += 8;
+
+            if (read(bitboards[6 + color_shift], attacking_square))
+            {
+                break;
+            }
+            else if (read(bitboards[13 - color_shift], attacking_square))
+            {
+                ray.push_back(attacking_square);
+                break;
+            }
+            else
+            {
+                ray.push_back(attacking_square);
+            }
+        }
+    }
 
 
     return ray;
 }
 
-std::vector<check_t> GameState::get_checks(bool white)
+bool GameState::in_check(bool white)
 {
-    std::vector<check_t> found_checks;
 
     int color_shift = 0;
     if (white) {
@@ -666,22 +754,38 @@ std::vector<check_t> GameState::get_checks(bool white)
         }
     }
 
-    check_t check;
-
-
-    std::vector<std::uint8_t> ray = get_attack_ray('N', king_square);
+    std::vector<std::uint8_t> ray = get_attack_ray(piece_order[8 - color_shift], king_square);
     for (std::uint8_t square : ray)
     {
         if (read(bitboards[1 + color_shift], square))
         {
-            check.piece = 1 + color_shift;
-            check.square = square;
-            found_checks.push_back(check);
+            return true;
+        }
+    }
+
+    if (white)
+    {
+        if (king_square % 8 != 0 && read(bitboards[7], king_square - 9)) {
+            return true;
+        }
+
+        if (king_square % 8 != 7 && read(bitboards[7], king_square - 7)) {
+            return true;
+        }
+    }
+    else
+    {
+        if (king_square % 8 != 0 && read(bitboards[7], king_square + 7)) {
+            return true;
+        }
+
+        if (king_square % 8 != 7 && read(bitboards[7], king_square + 9)) {
+            return true;
         }
     }
 
 
-    return found_checks;
+    return false;
 }
 
 
