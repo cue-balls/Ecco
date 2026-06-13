@@ -49,12 +49,12 @@ int main() {
     //std::cout << (state.state_stack[state.state_stack.size() - 1].captured_piece) << std::endl;
     //std::cout << state.square_occupancy(4) << std::endl;
     std::cout << state.in_check(false) << std::endl;
-    std::vector<std::uint8_t> rook_moves = state.get_attack_ray('r', 27);
+    std::vector<std::uint8_t> rook_moves = state.get_attack_ray('Q', 27);
 
-    //for (int i = 0; i < rook_moves.size(); i++)
-    //{
-      //  std::cout << (int)rook_moves[i] << std::endl;
-    //}
+    for (int i = 0; i < rook_moves.size(); i++)
+    {
+        std::cout << (int)rook_moves[i] << std::endl;
+    }
 
     return 0;
 }
