@@ -27,7 +27,7 @@ int main() {
     //view_bitboard(board);
     //std::cout << std::endl;
     
-    GameState state("rnbqkbnr/ppp1pppp/8/3r4/3R4/8/PPPPPPPP/RNBQKBN1 w Qkq - 0 1");
+    GameState state("rnbqkbnr/ppp1pppp/8/3r4/b2R4/8/PPPPPPPP/RNBQKBN1 w Qkq - 0 1");
 
     //state.make_move(2745);
     //state.make_move(1153);
@@ -53,7 +53,7 @@ int main() {
 
     for (int i = 0; i < rook_moves.size(); i++)
     {
-        std::cout << (int)rook_moves[i] << std::endl;
+        //std::cout << (int)rook_moves[i] << std::endl;
     }
 
     return 0;
