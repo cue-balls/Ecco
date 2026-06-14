@@ -27,7 +27,7 @@ int main() {
     //view_bitboard(board);
     //std::cout << std::endl;
     
-    GameState state("rnbqkbnr/ppp1pppp/8/3r4/b2R4/8/PPPPPPPP/RNBQKBN1 w Qkq - 0 1");
+    GameState state("1nbrnnK1/3pp1pp/1pp2p2/p5rB/6k1/6P1/PPPPPPBP/RNBQ2NR w - - 0 1");
 
     //state.make_move(2745);
     //state.make_move(1153);
@@ -48,6 +48,7 @@ int main() {
     //std::cout << (int)(state.state_stack[state.state_stack.size() - 1].en_passant_square) << std::endl;
     //std::cout << (state.state_stack[state.state_stack.size() - 1].captured_piece) << std::endl;
     //std::cout << state.square_occupancy(4) << std::endl;
+    std::cout << state.in_check(true) << std::endl;
     std::cout << state.in_check(false) << std::endl;
     std::vector<std::uint8_t> rook_moves = state.get_attack_ray('Q', 27);
 

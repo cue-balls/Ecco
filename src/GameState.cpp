@@ -656,7 +656,7 @@ std::vector<std::uint8_t> GameState::get_attack_ray(char attacking_piece, std::u
             attacking_square -= 9;
             ray.push_back(attacking_square);
             
-            if (read(bitboards[6], attacking_square) || read(bitboards[7], attacking_square)) {
+            if (read(bitboards[6], attacking_square) || read(bitboards[13], attacking_square)) {
                 break;
             }
         }
@@ -667,7 +667,7 @@ std::vector<std::uint8_t> GameState::get_attack_ray(char attacking_piece, std::u
             attacking_square -= 7;
             ray.push_back(attacking_square);
             
-            if (read(bitboards[6], attacking_square) || read(bitboards[7], attacking_square)) {
+            if (read(bitboards[6], attacking_square) || read(bitboards[13], attacking_square)) {
                 break;
             }
         }
@@ -678,7 +678,7 @@ std::vector<std::uint8_t> GameState::get_attack_ray(char attacking_piece, std::u
             attacking_square += 7;
             ray.push_back(attacking_square);
             
-            if (read(bitboards[6], attacking_square) || read(bitboards[7], attacking_square)) {
+            if (read(bitboards[6], attacking_square) || read(bitboards[13], attacking_square)) {
                 break;
             }
         }
@@ -689,7 +689,7 @@ std::vector<std::uint8_t> GameState::get_attack_ray(char attacking_piece, std::u
             attacking_square += 9;
             ray.push_back(attacking_square);
             
-            if (read(bitboards[6], attacking_square) || read(bitboards[7], attacking_square)) {
+            if (read(bitboards[6], attacking_square) || read(bitboards[13], attacking_square)) {
                 break;
             }
         }
@@ -703,7 +703,7 @@ std::vector<std::uint8_t> GameState::get_attack_ray(char attacking_piece, std::u
             attacking_square--;
             ray.push_back(attacking_square);
             
-            if (read(bitboards[6], attacking_square) || read(bitboards[7], attacking_square)) {
+            if (read(bitboards[6], attacking_square) || read(bitboards[13], attacking_square)) {
                 break;
             }
         }
@@ -714,7 +714,7 @@ std::vector<std::uint8_t> GameState::get_attack_ray(char attacking_piece, std::u
             attacking_square++;
             ray.push_back(attacking_square);
             
-            if (read(bitboards[6], attacking_square) || read(bitboards[7], attacking_square)) {
+            if (read(bitboards[6], attacking_square) || read(bitboards[13], attacking_square)) {
                 break;
             }
         }
@@ -725,7 +725,7 @@ std::vector<std::uint8_t> GameState::get_attack_ray(char attacking_piece, std::u
             attacking_square -= 8;
             ray.push_back(attacking_square);
             
-            if (read(bitboards[6], attacking_square) || read(bitboards[7], attacking_square)) {
+            if (read(bitboards[6], attacking_square) || read(bitboards[13], attacking_square)) {
                 break;
             }
         }
@@ -736,7 +736,7 @@ std::vector<std::uint8_t> GameState::get_attack_ray(char attacking_piece, std::u
             attacking_square += 8;
             ray.push_back(attacking_square);
             
-            if (read(bitboards[6], attacking_square) || read(bitboards[7], attacking_square)) {
+            if (read(bitboards[6], attacking_square) || read(bitboards[13], attacking_square)) {
                 break;
             }
         }
@@ -839,6 +839,7 @@ bool GameState::in_check(bool white)
         }
 
         if (read(bitboards[4 + color_shift], square)) {
+            std::cout << (int)square << std::endl;
             return true;
         }
 
