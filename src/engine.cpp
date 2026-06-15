@@ -27,7 +27,7 @@ int main() {
     //view_bitboard(board);
     //std::cout << std::endl;
     
-    GameState state("5k2/8/1q6/8/1Q6/3R4/5B2/1K6 w - - 0 1");
+    GameState state("r3kbnr/ppp2ppp/8/8/6R1/8/PPPPPPPP/R3KBNR w KQkq - 0 1");
 
     //state.make_move(2745);
     //state.make_move(1153);
@@ -57,7 +57,7 @@ int main() {
         //std::cout << (int)rook_moves[i] << std::endl;
     }
 
-    //state.white_to_move = !state.white_to_move;
+    state.white_to_move = !state.white_to_move;
     std::vector<std::uint16_t> moves = state.get_legal_moves();
     std::cout << moves.size() << std::endl;
 
@@ -65,7 +65,7 @@ int main() {
     {
         std::string from = int_to_square(move & 63);
         std::string to = int_to_square((move >> 6) & 63);
-        std::cout << from << to << std::endl;
+        std::cout << from << to  << " --> " << (int)((move >> 12) & 15) << std::endl;
     }
 
 

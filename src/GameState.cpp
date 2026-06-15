@@ -866,9 +866,12 @@ bool GameState::in_check(bool white)
 
 std::vector<std::uint16_t> GameState::get_legal_moves()
 {
-    int color_shift = 0;
-    if (!white_to_move) {
-        color_shift = 7;
+    int color_shift = 7;
+    int castle_shift = 0;
+
+    if (white_to_move) {
+        color_shift = 0;
+        castle_shift = 56;
     }
 
     std::vector<std::uint16_t> legal_moves;
@@ -916,13 +919,134 @@ std::vector<std::uint16_t> GameState::get_legal_moves()
         }
     }
 
+    UndoState undo = state_stack[state_stack.size() - 1];
+    std::uint8_t castling = 0;
+
+    if (white_to_move)
+    {
+        castling = undo.castling_rights & 3;
+    }
+    else
+    {
+        castling = (undo.castling_rights >> 2) & 3;
+    }
 
 
+    if (read(castling, 0)) {
+        if (kingside_eligibility()) {
+            std::uint16_t move = ((6 + castle_shift) << 6) | (4 + castle_shift);
+            set(&move, 13);
+            legal_moves.push_back(move);
+        }
+    }
+
+    if (read(castling, 1)) {
+        if (queenside_eligibility()) {
+            std::uint16_t move = ((2 + castle_shift) << 6) | (4 + castle_shift);
+            set(&move, 12);
+            set(&move, 13);
+            legal_moves.push_back(move);
+        }
+    }
 
 
 
 
     return legal_moves;
+}
+
+bool GameState::kingside_eligibility()
+{
+    int castle_shift = 0;
+    int color_shift = 7;
+    
+    if (white_to_move) {
+        castle_shift = 56;
+        color_shift = 0;
+    }
+
+    
+    if (!read(bitboards[5 + color_shift], 4 + castle_shift)) {
+        return false;
+    }
+
+    if (!read(bitboards[3 + color_shift], 7 + castle_shift)) {
+        return false;
+    }
+
+    if (read(bitboards[6], 5 + castle_shift) || read(bitboards[13], 5 + castle_shift)) {
+        return false;
+    }
+
+    if (read(bitboards[6], 6 + castle_shift) || read(bitboards[13], 6 + castle_shift)) {
+        return false;
+    }
+
+    for (int i = 4 + castle_shift; i < 7 + castle_shift; i++)
+    {
+        clear(&bitboards[5 + color_shift], 4 + castle_shift);
+        set(&bitboards[5 + color_shift], i);
+
+        if (in_check(white_to_move)) {
+            return false;
+        }
+
+        clear(&bitboards[5 + color_shift], i);
+        set(&bitboards[5 + color_shift], 4 + castle_shift);
+    }
+
+
+
+
+    return true;
+}
+
+bool GameState::queenside_eligibility()
+{
+    int castle_shift = 0;
+    int color_shift = 7;
+    
+    if (white_to_move) {
+        castle_shift = 56;
+        color_shift = 0;
+    }
+
+    if (!read(bitboards[5 + color_shift], 4 + castle_shift)) {
+        return false;
+    }
+
+    if (!read(bitboards[3 + color_shift], castle_shift)) {
+        return false;
+    }
+
+    if (read(bitboards[6], 1 + castle_shift) || read(bitboards[13], 1 + castle_shift)) {
+        return false;
+    }
+
+    if (read(bitboards[6], 2 + castle_shift) || read(bitboards[13], 2 + castle_shift)) {
+        return false;
+    }
+
+    if (read(bitboards[6], 3 + castle_shift) || read(bitboards[13], 3 + castle_shift)) {
+        return false;
+    }
+
+
+    for (int i = 2 + castle_shift; i < 5 + castle_shift; i++)
+    {
+        clear(&bitboards[5 + color_shift], 4 + castle_shift);
+        set(&bitboards[5 + color_shift], i);
+
+        if (in_check(white_to_move)) {
+            return false;
+        }
+
+        clear(&bitboards[5 + color_shift], i);
+        set(&bitboards[5 + color_shift], 4 + castle_shift);
+    }
+
+
+    return true;
 }
 
 
