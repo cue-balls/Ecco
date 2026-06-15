@@ -6,6 +6,7 @@
 
 void set(std::uint64_t* board, int position);
 void set(std::uint8_t* board, int position);
+void set(std::uint16_t* board, int position);
 void clear(std::uint64_t* board, int position);
 void clear(std::uint8_t* board, int position);
 int read(std::uint64_t board, int position);

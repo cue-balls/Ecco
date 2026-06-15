@@ -839,7 +839,6 @@ bool GameState::in_check(bool white)
         }
 
         if (read(bitboards[4 + color_shift], square)) {
-            std::cout << (int)square << std::endl;
             return true;
         }
 
@@ -862,6 +861,68 @@ bool GameState::in_check(bool white)
 
 
     return false;
+}
+
+
+std::vector<std::uint16_t> GameState::get_legal_moves()
+{
+    int color_shift = 0;
+    if (!white_to_move) {
+        color_shift = 7;
+    }
+
+    std::vector<std::uint16_t> legal_moves;
+
+
+    for (int from_square = 0; from_square < 64; from_square++)
+    {
+        if (!read(bitboards[6 + color_shift], from_square)) {
+            continue;
+        }
+
+
+        if (!read(bitboards[0 + color_shift], from_square))
+        {
+            std::uint8_t piece = 0;
+            for (int i = 1 + color_shift; i < 6 + color_shift; i++)
+            {
+                if (read(bitboards[i], from_square)) {
+                    piece = i;
+                    break;
+                }
+            }
+
+            std::vector<std::uint8_t> ray = get_attack_ray(piece_order[piece], from_square);
+
+            for (std::uint8_t target : ray)
+            {
+                if (read(bitboards[6 + color_shift], target)) {
+                    continue;
+                }
+
+                std::uint16_t move = ((std::uint16_t)target << 6) | from_square;
+                if (read(bitboards[13 - color_shift], target)) {
+                    set(&move, 14);
+                }
+
+                
+                make_move(move);
+                if (!in_check(!white_to_move)) {
+                    legal_moves.push_back(move);
+                }
+
+                unmake_move(move);
+            }
+        }
+    }
+
+
+
+
+
+
+
+    return legal_moves;
 }
 
 

@@ -27,7 +27,7 @@ int main() {
     //view_bitboard(board);
     //std::cout << std::endl;
     
-    GameState state("1nbrnnK1/3pp1pp/1pp2p2/p5rB/6k1/6P1/PPPPPPBP/RNBQ2NR w - - 0 1");
+    GameState state("5k2/8/1q6/8/1Q6/3R4/5B2/1K6 w - - 0 1");
 
     //state.make_move(2745);
     //state.make_move(1153);
@@ -48,14 +48,26 @@ int main() {
     //std::cout << (int)(state.state_stack[state.state_stack.size() - 1].en_passant_square) << std::endl;
     //std::cout << (state.state_stack[state.state_stack.size() - 1].captured_piece) << std::endl;
     //std::cout << state.square_occupancy(4) << std::endl;
-    std::cout << state.in_check(true) << std::endl;
-    std::cout << state.in_check(false) << std::endl;
+    //std::cout << state.in_check(true) << std::endl;
+    //std::cout << state.in_check(false) << std::endl;
     std::vector<std::uint8_t> rook_moves = state.get_attack_ray('Q', 27);
 
     for (int i = 0; i < rook_moves.size(); i++)
     {
         //std::cout << (int)rook_moves[i] << std::endl;
     }
+
+    //state.white_to_move = !state.white_to_move;
+    std::vector<std::uint16_t> moves = state.get_legal_moves();
+    std::cout << moves.size() << std::endl;
+
+    for (std::uint16_t move : moves)
+    {
+        std::string from = int_to_square(move & 63);
+        std::string to = int_to_square((move >> 6) & 63);
+        std::cout << from << to << std::endl;
+    }
+
 
     return 0;
 }

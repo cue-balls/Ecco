@@ -34,6 +34,7 @@ class GameState {
 
         void make_move(std::uint16_t move);
         void unmake_move(std::uint16_t move);
+        std::vector<std::uint16_t> get_legal_moves();
 
     private:
 
