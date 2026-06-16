@@ -27,7 +27,7 @@ int main() {
     //view_bitboard(board);
     //std::cout << std::endl;
     
-    GameState state("4q3/3P3p/k7/8/2K5/8/2P2PP1/8 w - - 0 1");
+    GameState state("r1bqkbnr/pppp1ppp/2n5/8/2PpP3/5N2/PP3PPP/RNBQKB1R w KQkq c3 0 1");
 
     //state.make_move(2745);
     //state.make_move(1153);
