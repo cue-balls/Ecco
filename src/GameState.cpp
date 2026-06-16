@@ -917,6 +917,151 @@ std::vector<std::uint16_t> GameState::get_legal_moves()
                 unmake_move(move);
             }
         }
+
+
+        if (white_to_move && read(bitboards[0], from_square))
+        {
+            if (!read(bitboards[6], from_square - 8) && !read(bitboards[13], from_square - 8)) 
+            {
+                std::uint16_t move = ((from_square - 8) << 6) | from_square;
+                if ((from_square - 8) / 8 == 0)
+                {
+                    for (int i = 8; i < 12; i++)
+                    {
+                        move |= (i << 12);
+                        legal_moves.push_back(move);
+                        move &= 4095;
+                    }
+                }
+                else
+                {
+                    legal_moves.push_back(move);
+                }
+            }
+
+            if (from_square / 8 == 6)
+            {
+                if (!read(bitboards[6], from_square - 16) && !read(bitboards[13], from_square - 16))
+                {
+                    std::uint16_t move = ((from_square - 16) << 6) | from_square;
+                    set(&move, 12);
+                    legal_moves.push_back(move);
+                }
+            }
+
+            if (from_square % 8 != 0 && read(bitboards[13], from_square - 9)) 
+            {
+                std::uint16_t move = ((from_square - 9) << 6) | from_square;
+                
+                if ((from_square - 9) / 8 == 0)
+                {
+                    for (int i = 12; i < 16; i++)
+                    {
+                        move |= (i << 12);
+                        legal_moves.push_back(move);
+                        move &= 4095;
+                    }
+                }
+                else
+                {
+                    set(&move, 14);
+                    legal_moves.push_back(move);
+                }
+            }
+
+            if (from_square % 8 != 7 && read(bitboards[13], from_square - 7)) 
+            {
+                std::uint16_t move = ((from_square - 7) << 6) | from_square;
+                
+                if ((from_square - 7) / 8 == 0)
+                {
+                    for (int i = 12; i < 16; i++)
+                    {
+                        move |= (i << 12);
+                        legal_moves.push_back(move);
+                        move &= 4095;
+                    }
+                }
+                else
+                {
+                    set(&move, 14);
+                    legal_moves.push_back(move);
+                }
+            }
+        }
+
+        
+
+        if (!white_to_move && read(bitboards[7], from_square))
+        {
+            if (!read(bitboards[6], from_square + 8) && !read(bitboards[13], from_square + 8)) 
+            {
+                std::uint16_t move = ((from_square + 8) << 6) | from_square;
+                if ((from_square + 8) / 8 == 7)
+                {
+                    for (int i = 8; i < 12; i++)
+                    {
+                        move |= (i << 12);
+                        legal_moves.push_back(move);
+                        move &= 4095;
+                    }
+                }
+                else
+                {
+                    legal_moves.push_back(move);
+                }
+            }
+
+            if (from_square / 8 == 1)
+            {
+                if (!read(bitboards[6], from_square + 16) && !read(bitboards[13], from_square + 16))
+                {
+                    std::uint16_t move = ((from_square + 16) << 6) | from_square;
+                    set(&move, 12);
+                    legal_moves.push_back(move);
+                }
+            }
+
+            if (from_square % 8 != 0 && read(bitboards[6], from_square + 7)) 
+            {
+                std::uint16_t move = ((from_square + 7) << 6) | from_square;
+                
+                if ((from_square + 7) / 8 == 7)
+                {
+                    for (int i = 12; i < 16; i++)
+                    {
+                        move |= (i << 12);
+                        legal_moves.push_back(move);
+                        move &= 4095;
+                    }
+                }
+                else
+                {
+                    set(&move, 14);
+                    legal_moves.push_back(move);
+                }
+            }
+
+            if (from_square % 8 != 7 && read(bitboards[6], from_square + 9)) 
+            {
+                std::uint16_t move = ((from_square + 9) << 6) | from_square;
+                
+                if ((from_square + 9) / 8 == 7)
+                {
+                    for (int i = 12; i < 16; i++)
+                    {
+                        move |= (i << 12);
+                        legal_moves.push_back(move);
+                        move &= 4095;
+                    }
+                }
+                else
+                {
+                    set(&move, 14);
+                    legal_moves.push_back(move);
+                }
+            }
+        }
     }
 
     UndoState undo = state_stack[state_stack.size() - 1];
