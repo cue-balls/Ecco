@@ -229,6 +229,11 @@ GameState::GameState(std::string FEN) : bitboards(14), white_to_move(true) {
     state_stack.push_back(current_state);
 }
 
+
+
+
+
+
 //determines what piece if any is on a given square
 char GameState::square_occupancy(std::uint8_t square)
 {
@@ -251,17 +256,48 @@ char GameState::square_occupancy(std::uint8_t square)
 
 
 
+
+
+
 void GameState::make_move(std::uint16_t move)
 {
+    //moves are stored as u16's
+    //first 6 bits represent the square piece starts on 0-63
+    //next 6 bits represent the square piece lands on 0-63
+    //final 4 bits are a special flag containing additional info
+    
+    //0000->regular move
+    //0001->double pawn push
+    //0010->kingside castle
+    //0011->queenside castle
+    //0100->regular capture
+    //0101->en passant capture
+    //0110/0111 are unused
+    //1000->knight promotion
+    //1001->bishop promotion
+    //1010->rook promotion
+    //1011->queen promotion
+    //1100->knight promotion with capture
+    //1101->bishop promotion with capture
+    //1110->rook promotion with capture
+    //1111->queen promotion with capture
+
+
+    //tracking state for undo purposes
     UndoState undo;
 
     std::uint8_t from_square = move & 63;
     std::uint8_t target_square = (move >> 6) & 63;
     std::uint8_t special_move_data = (move >> 12) & 15;
+
+    //assume same castling rights as previous state and only change if king/rook move
     std::uint8_t castling = state_stack[state_stack.size() - 1].castling_rights;
+
+    //en passant eligibility only lasts for 1 turn and therefore must be reset each move
     std::uint8_t en_passant = 255;
     char capture = '-';
 
+    //this loop searches for piece on from square and moves it to target square
     for (int board = 0; board < 14; board++)
     {
         if (board == 6 || board == 13) {
@@ -270,20 +306,26 @@ void GameState::make_move(std::uint16_t move)
 
         if (read(bitboards[board], from_square))
         {
+            //moving piece
             set(&bitboards[board], target_square);
             clear(&bitboards[board], from_square);
-
-            if (board < 6)
+            
+            if (board < 6) //white piece
             {
+                //changing composite board
                 clear(&bitboards[6], from_square);
                 set(&bitboards[6], target_square);
             }
-            else
+            else //black piece
             {
+                //changing composite board
                 clear(&bitboards[13], from_square);
                 set(&bitboards[13], target_square);
             }
 
+
+            //all capture moves by design have the second bit from left set to 1
+            //if there is no capture, no further looping is required
             if (!read(special_move_data, 2)) 
             {
                 break;
@@ -291,6 +333,7 @@ void GameState::make_move(std::uint16_t move)
         }
         else if (read(bitboards[board], target_square))
         {
+            //handling captured piece
             clear(&bitboards[board], target_square);
             if (board < 6)
             {
@@ -306,6 +349,9 @@ void GameState::make_move(std::uint16_t move)
         }
     }
     
+
+
+    //determining changes to castling rights
     if (castling != 0)
     {
         switch (from_square) {
@@ -327,14 +373,17 @@ void GameState::make_move(std::uint16_t move)
     }
     
 
-
+    //setting en passant flag
     if (special_move_data == 1) {
         en_passant = (target_square + from_square) / 2;
     }
 
+
+    //in the event of a castle, the from square and target square represent the king's movement
+    //therefore the only concern is moving the rook and removing all castling rights from the active player
     if (special_move_data == 2) 
     {
-        if (target_square == 62)
+        if (target_square == 62) //white
         {
             clear(&bitboards[3], 63);
             clear(&bitboards[6], 63);
@@ -343,7 +392,7 @@ void GameState::make_move(std::uint16_t move)
             clear(&castling, 0);
             clear(&castling, 1);
         }
-        else if (target_square == 6)
+        else if (target_square == 6) //black
         {
             clear(&bitboards[10], 7);
             clear(&bitboards[13], 7);
@@ -356,7 +405,7 @@ void GameState::make_move(std::uint16_t move)
 
     if (special_move_data == 3)
     {
-        if (target_square == 58)
+        if (target_square == 58) //white
         {
             clear(&bitboards[3], 56);
             clear(&bitboards[6], 56);
@@ -365,7 +414,7 @@ void GameState::make_move(std::uint16_t move)
             clear(&castling, 0);
             clear(&castling, 1);
         }
-        else if (target_square == 2)
+        else if (target_square == 2) //black
         {
             clear(&bitboards[10], 0);
             clear(&bitboards[13], 0);
@@ -376,15 +425,17 @@ void GameState::make_move(std::uint16_t move)
         }
     }
 
+
+    //en passant capture
     if (special_move_data == 5) 
     {
-        if (target_square >= 16 && target_square <= 23)
+        if (target_square / 8 == 2)
         {
             clear(&bitboards[7], target_square + 8);
             clear(&bitboards[13], target_square + 8);
             capture = 'p';
         }
-        else if (target_square >= 40 && target_square <= 47)
+        else if (target_square / 8 == 5)
         {
             clear(&bitboards[0], target_square - 8);
             clear(&bitboards[6], target_square - 8);
@@ -392,30 +443,41 @@ void GameState::make_move(std::uint16_t move)
         }
     }
 
-
+    //all promotion moves have the msb set to 1
+    //this block handles promotion moves
     if (read(special_move_data, 3))
     {
+        //color shift is used to differentiate between active and inactive player
+        //bitboards[x + color_shift] represents piece x of the active player
         int color_shift = 0;
         if (target_square >= 56) {
             color_shift = 7;
         }
 
         switch (special_move_data) {
+            
+            //knight promotion
             case 8:
             case 12:
                 clear(&bitboards[0 + color_shift], target_square);
                 set(&bitboards[1 + color_shift], target_square);
                 break;
+            
+            //bishop promotion
             case 9:
             case 13:
                 clear(&bitboards[0 + color_shift], target_square);
                 set(&bitboards[2 + color_shift], target_square);
                 break;
+            
+            //rook promotion
             case 10:
             case 14:
                 clear(&bitboards[0 + color_shift], target_square);
                 set(&bitboards[3 + color_shift], target_square);
                 break;
+            
+            //queen promotion
             case 11:
             case 15:
                 clear(&bitboards[0 + color_shift], target_square);
@@ -433,6 +495,10 @@ void GameState::make_move(std::uint16_t move)
 
     white_to_move = !white_to_move;
 }
+
+
+
+
 
 
 
