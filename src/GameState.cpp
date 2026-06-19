@@ -443,6 +443,9 @@ void GameState::make_move(std::uint16_t move)
         }
     }
 
+
+
+
     //all promotion moves have the msb set to 1
     //this block handles promotion moves
     if (read(special_move_data, 3))
@@ -534,6 +537,8 @@ void GameState::unmake_move(std::uint16_t move)
         {
             clear(&bitboards[board], target_square);
             set(&bitboards[board], from_square);
+            
+            //updating composite
             if (board < 6) 
             {
                 clear(&bitboards[6], target_square);
@@ -545,6 +550,8 @@ void GameState::unmake_move(std::uint16_t move)
                 set(&bitboards[13], from_square);
             }
 
+
+            //handling non en passant captures
             if (read(special_move_data, 2) && special_move_data != 5) 
             {
                 set(&bitboards[captured_board], target_square);
@@ -565,6 +572,7 @@ void GameState::unmake_move(std::uint16_t move)
 
 
 
+    //putting rooks back if move is a castle
     if (special_move_data == 2)
     {
         if (board < 6)
@@ -601,6 +609,8 @@ void GameState::unmake_move(std::uint16_t move)
         }
     }
 
+
+    //undoing en passant capture
     if (special_move_data == 5)
     {
         if (board < 6)
@@ -620,6 +630,8 @@ void GameState::unmake_move(std::uint16_t move)
         color_shift = 7;
     }
 
+
+    //undoing promotion
     if (read(special_move_data, 3))
     {
         switch (special_move_data) {
@@ -650,71 +662,78 @@ void GameState::unmake_move(std::uint16_t move)
 }
 
 
+
+
+
+
+
+//takes an input piece and generates all squares it exerts pressure on
+//includes all squares that can be moved to and all same color pieces it is defending
+//pawn moves are more complicated and are calculated separately
 std::vector<std::uint8_t> GameState::get_attack_ray(char attacking_piece, std::uint8_t origin)
 {
     std::vector<std::uint8_t> ray;
 
-    int color_shift = 0;
-    if (std::islower(attacking_piece)) {
-        color_shift = 7;
-    }
+    //mod and floor division operators are routinely used to get rank/file info
+    //this is useful when a piece being on the edge of the board would affect its movement
+
 
     if (attacking_piece == 'N' || attacking_piece == 'n')
     {
+        //knight moves can be calculated by shifting the square the knight is on by a value
+        //knight shift values are 6, 10, 15, 17, -6, -10, -15, -17
+        //however we must check to make sure the knight is not on the edge of the board to verify each shift
+
         if (origin > 15)
         {
-            if (origin % 8 != 0)
-            {
+            if (origin % 8 != 0) {
                 ray.push_back(origin - 17);
             }
 
-            if (origin % 8 != 7)
-            {
+            if (origin % 8 != 7) {
                 ray.push_back(origin - 15);
             }
         }
 
         if (origin < 48)
         {
-            if (origin % 8 != 0)
-            {
+            if (origin % 8 != 0) {
                 ray.push_back(origin + 15);
             }
 
-            if (origin % 8 != 7)
-            {
+            if (origin % 8 != 7) {
                 ray.push_back(origin + 17);
             }
         }
 
         if (origin > 7)
         {
-            if (origin % 8 > 1)
-            {
+            if (origin % 8 > 1) {
                 ray.push_back(origin - 10);
             }
 
-            if (origin % 8 < 6)
-            {
+            if (origin % 8 < 6) {
                 ray.push_back(origin - 6);
             }
         }
 
         if (origin < 56)
         {
-            if (origin % 8 > 1)
-            {
+            if (origin % 8 > 1) {
                 ray.push_back(origin + 6);
             }
 
-            if (origin % 8 < 6)
-            {
+            if (origin % 8 < 6) {
                 ray.push_back(origin + 10);
             }
         }
     }
     else if (attacking_piece == 'B' || attacking_piece == 'b')
     {
+        //diagonals are always shifts of 7 or 9
+        //edge detection must be done
+
+
         std::uint8_t attacking_square = origin;
 
         while (attacking_square > 7 && attacking_square % 8 != 0)
@@ -722,11 +741,15 @@ std::vector<std::uint8_t> GameState::get_attack_ray(char attacking_piece, std::u
             attacking_square -= 9;
             ray.push_back(attacking_square);
             
+
+            //if there is a piece in the way the diagonal stops being calculated
             if (read(bitboards[6], attacking_square) || read(bitboards[13], attacking_square)) {
                 break;
             }
         }
 
+        
+        
         attacking_square = origin;
         while (attacking_square > 7 && attacking_square % 8 != 7)
         {
@@ -738,6 +761,8 @@ std::vector<std::uint8_t> GameState::get_attack_ray(char attacking_piece, std::u
             }
         }
 
+        
+        
         attacking_square = origin;
         while (attacking_square < 56 && attacking_square % 8 != 0)
         {
@@ -749,6 +774,8 @@ std::vector<std::uint8_t> GameState::get_attack_ray(char attacking_piece, std::u
             }
         }
 
+        
+        
         attacking_square = origin;
         while (attacking_square < 56 && attacking_square % 8 != 7)
         {
@@ -764,7 +791,7 @@ std::vector<std::uint8_t> GameState::get_attack_ray(char attacking_piece, std::u
     {
         std::uint8_t attacking_square = origin;
 
-        while (attacking_square % 8 != 0)
+        while (attacking_square % 8 != 0) //file shift
         {
             attacking_square--;
             ray.push_back(attacking_square);
@@ -774,8 +801,10 @@ std::vector<std::uint8_t> GameState::get_attack_ray(char attacking_piece, std::u
             }
         }
 
+
+
         attacking_square = origin;
-        while (attacking_square % 8 != 7)
+        while (attacking_square % 8 != 7) //file shift
         {
             attacking_square++;
             ray.push_back(attacking_square);
@@ -785,8 +814,10 @@ std::vector<std::uint8_t> GameState::get_attack_ray(char attacking_piece, std::u
             }
         }
 
+
+
         attacking_square = origin;
-        while (attacking_square > 7)
+        while (attacking_square > 7) //rank shift
         {
             attacking_square -= 8;
             ray.push_back(attacking_square);
@@ -796,8 +827,10 @@ std::vector<std::uint8_t> GameState::get_attack_ray(char attacking_piece, std::u
             }
         }
 
+        
+        
         attacking_square = origin;
-        while (attacking_square < 56)
+        while (attacking_square < 56) //rank shift
         {
             attacking_square += 8;
             ray.push_back(attacking_square);
@@ -809,8 +842,10 @@ std::vector<std::uint8_t> GameState::get_attack_ray(char attacking_piece, std::u
     }
     else if (attacking_piece == 'Q' || attacking_piece == 'q')
     {
-        std::vector<std::uint8_t> diagonal = get_attack_ray(piece_order[2 + color_shift], origin);
-        std::vector<std::uint8_t> orthogonal = get_attack_ray(piece_order[3 + color_shift], origin);
+        //queen rays are recursive combinations of bishop and rook rays
+
+        std::vector<std::uint8_t> diagonal = get_attack_ray(piece_order[2], origin);
+        std::vector<std::uint8_t> orthogonal = get_attack_ray(piece_order[3], origin);
         diagonal.reserve(diagonal.size() + orthogonal.size());
         diagonal.insert(diagonal.end(), orthogonal.begin(), orthogonal.end());
 
@@ -840,34 +875,46 @@ std::vector<std::uint8_t> GameState::get_attack_ray(char attacking_piece, std::u
     return ray;
 }
 
+
+
+
+
+
 bool GameState::in_check(bool white)
 {
-
     int color_shift = 0;
-    if (white) {
+    if (!white) {
         color_shift = 7;
     }
 
     int king_square;
 
+    //looping to find where king is
     for (int square = 0; square < 64; square++)
     {
-        if (read(bitboards[12 - color_shift], square))
+        if (read(bitboards[5 + color_shift], square))
         {
             king_square = square;
             break;
         }
     }
 
+    //when searching for checks, we can imagine the king is another piece and look at where that piece would attack
+    //those squares can then be checked to see if that piece is there
+
+
+    //searching for knight checks
     std::vector<std::uint8_t> ray = get_attack_ray(piece_order[1], king_square);
     for (std::uint8_t square : ray)
     {
-        if (read(bitboards[1 + color_shift], square))
-        {
+        if (read(bitboards[8 - color_shift], square)) {
             return true;
         }
     }
 
+
+
+    //pawn checks are separate
     if (white)
     {
         if (king_square % 8 != 0 && read(bitboards[7], king_square - 9)) {
@@ -889,37 +936,47 @@ bool GameState::in_check(bool white)
         }
     }
 
+
+
+    //a king can never actually give check, but for the sake of validating moves, it must be accounted for
     ray = get_attack_ray(piece_order[5], king_square);
     for (std::uint8_t square : ray)
     {
-        if (read(bitboards[5 + color_shift], square)) {
+        if (read(bitboards[12 - color_shift], square)) {
             return true;
         }
     }
 
+
+    //looks at the orthogonal and diagonal rays stemming from the king
+    //in other words we think of our king like a queen and check the squares it sees
     ray = get_attack_ray(piece_order[4], king_square);
     for (std::uint8_t square : ray)
     {
-        if (!read(bitboards[6 + color_shift], square)) {
+        if (!read(bitboards[13 - color_shift], square)) {
             continue;
         }
 
-        if (read(bitboards[4 + color_shift], square)) {
+        if (read(bitboards[11 - color_shift], square)) {
             return true;
         }
 
 
+        //differentiating between rook and bishop
         std::uint8_t difference = std::max((int)king_square, (int)square) - std::min((int)king_square, (int)square);
 
-        if (difference % 8 == 0 && read(bitboards[3 + color_shift], square)) {
+        //orthogonal check
+        if (difference % 8 == 0 && read(bitboards[10 - color_shift], square)) {
             return true;
         }
 
-        if ((square / 8) == (king_square / 8) && read(bitboards[3 + color_shift], square)) {
+        //orthogonal check
+        if ((square / 8) == (king_square / 8) && read(bitboards[10 - color_shift], square)) {
             return true;
         }
 
-        if (difference % 8 != 0 && (square / 8) != (king_square / 8) && read(bitboards[2 + color_shift], square)) {
+        //diagonal check
+        if (difference % 8 != 0 && (square / 8) != (king_square / 8) && read(bitboards[9 - color_shift], square)) {
             return true;
         }
     }
@@ -930,17 +987,28 @@ bool GameState::in_check(bool white)
 }
 
 
+
+
+
+
+
+
+
 std::vector<std::uint16_t> GameState::get_legal_moves()
 {
-    int color_shift = 7;
-    int castle_shift = 0;
+    std::uint8_t color_shift = 7;
+    std::uint8_t castle_shift = 0;
 
     if (white_to_move) {
         color_shift = 0;
         castle_shift = 56;
     }
 
+
     std::vector<std::uint16_t> legal_moves;
+
+
+    //even though it is primarily designed to undo moves, the last element represents the current state
     UndoState undo = state_stack[state_stack.size() - 1];
 
 
@@ -962,6 +1030,8 @@ std::vector<std::uint16_t> GameState::get_legal_moves()
                 }
             }
 
+            //attack ray is used to find available moves
+            //however it includes moves in which a player would capture there own piece, which must be filtered out
             std::vector<std::uint8_t> ray = get_attack_ray(piece_order[piece], from_square);
 
             for (std::uint8_t target : ray)
@@ -970,12 +1040,16 @@ std::vector<std::uint16_t> GameState::get_legal_moves()
                     continue;
                 }
 
+                //move packing
                 std::uint16_t move = ((std::uint16_t)target << 6) | from_square;
                 if (read(bitboards[13 - color_shift], target)) {
+                    //set the capture flag
                     set(&move, 14);
                 }
 
-                
+                //last step in move validation is to determine if king would be vulnerable if the move were played
+                //since making and unmaking moves is already necessary it can be repurposed here
+
                 make_move(move);
                 if (!in_check(!white_to_move)) {
                     legal_moves.push_back(move);
@@ -986,11 +1060,16 @@ std::vector<std::uint16_t> GameState::get_legal_moves()
         }
 
 
-        if (white_to_move && read(bitboards[0], from_square))
+
+        //white pawn moves
+        if (white_to_move && read(bitboards[0], from_square)) 
         {
+            //single pawn push
             if (!read(bitboards[6], from_square - 8) && !read(bitboards[13], from_square - 8)) 
             {
                 std::uint16_t move = ((from_square - 8) << 6) | from_square;
+                
+                //promotion handling
                 if ((from_square - 8) / 8 == 0)
                 {
                     for (int i = 8; i < 12; i++)
@@ -1006,6 +1085,8 @@ std::vector<std::uint16_t> GameState::get_legal_moves()
                 }
             }
 
+
+            //double pawn push
             if (from_square / 8 == 6)
             {
                 if (!read(bitboards[6], from_square - 8) && !read(bitboards[13], from_square - 8) 
@@ -1017,12 +1098,15 @@ std::vector<std::uint16_t> GameState::get_legal_moves()
                 }
             }
 
+
+            //diagonal attacks
             if (from_square % 8 != 0) 
             {
                 if (read(bitboards[13], from_square - 9))
                 {
                     std::uint16_t move = ((from_square - 9) << 6) | from_square;
                 
+                    //promotion handling
                     if ((from_square - 9) / 8 == 0)
                     {
                         for (int i = 12; i < 16; i++)
@@ -1039,6 +1123,8 @@ std::vector<std::uint16_t> GameState::get_legal_moves()
                     }
                 }
 
+
+                //en passant handling
                 if (from_square - 9 == undo.en_passant_square && from_square / 8 == 3)
                 {
                     std::uint16_t move = ((from_square - 9) << 6) | from_square;
@@ -1048,12 +1134,15 @@ std::vector<std::uint16_t> GameState::get_legal_moves()
                 }
             }
 
+
+            //diagonal attacks
             if (from_square % 8 != 7) 
             {
                 if (read(bitboards[13], from_square - 7))
                 {
                     std::uint16_t move = ((from_square - 7) << 6) | from_square;
                 
+                    //promotion handling
                     if ((from_square - 7) / 8 == 0)
                     {
                         for (int i = 12; i < 16; i++)
@@ -1070,6 +1159,8 @@ std::vector<std::uint16_t> GameState::get_legal_moves()
                     }
                 }
 
+
+                //en passant handling
                 if (from_square - 7 == undo.en_passant_square && from_square / 8 == 3)
                 {
                     std::uint16_t move = ((from_square - 7) << 6) | from_square;
@@ -1081,9 +1172,10 @@ std::vector<std::uint16_t> GameState::get_legal_moves()
         }
 
         
-
+        //black pawn moves
         if (!white_to_move && read(bitboards[7], from_square))
         {
+            //single pawn push
             if (!read(bitboards[6], from_square + 8) && !read(bitboards[13], from_square + 8)) 
             {
                 std::uint16_t move = ((from_square + 8) << 6) | from_square;
@@ -1102,6 +1194,8 @@ std::vector<std::uint16_t> GameState::get_legal_moves()
                 }
             }
 
+
+            //double pawn push
             if (from_square / 8 == 1)
             {
                 if (!read(bitboards[6], from_square + 8) && !read(bitboards[13], from_square + 8) 
@@ -1113,6 +1207,7 @@ std::vector<std::uint16_t> GameState::get_legal_moves()
                 }
             }
 
+            //diagonal attacks
             if (from_square % 8 != 0) 
             {
                 if (read(bitboards[6], from_square + 7))
@@ -1135,6 +1230,8 @@ std::vector<std::uint16_t> GameState::get_legal_moves()
                     }
                 }
 
+
+                //en passant
                 if (from_square + 7 == undo.en_passant_square && from_square / 8 == 4)
                 {
                     std::uint16_t move = ((from_square + 7) << 6) | from_square;
@@ -1145,6 +1242,7 @@ std::vector<std::uint16_t> GameState::get_legal_moves()
                 
             }
 
+            //diagonal attacks
             if (from_square % 8 != 7) 
             {
                 if (read(bitboards[6], from_square + 9))
@@ -1167,6 +1265,8 @@ std::vector<std::uint16_t> GameState::get_legal_moves()
                     }
                 }
 
+
+                //en passant
                 if (from_square + 9 == undo.en_passant_square && from_square / 8 == 4)
                 {
                     std::uint16_t move = ((from_square + 9) << 6) | from_square;
@@ -1181,6 +1281,8 @@ std::vector<std::uint16_t> GameState::get_legal_moves()
     
     std::uint8_t castling = 0;
 
+
+    //extracting castling rights by color
     if (white_to_move)
     {
         castling = undo.castling_rights & 3;
@@ -1225,22 +1327,27 @@ bool GameState::kingside_eligibility()
     }
 
     
+    //king position
     if (!read(bitboards[5 + color_shift], 4 + castle_shift)) {
         return false;
     }
 
+    //rook position
     if (!read(bitboards[3 + color_shift], 7 + castle_shift)) {
         return false;
     }
 
+    //in between square
     if (read(bitboards[6], 5 + castle_shift) || read(bitboards[13], 5 + castle_shift)) {
         return false;
     }
 
+    //in between square
     if (read(bitboards[6], 6 + castle_shift) || read(bitboards[13], 6 + castle_shift)) {
         return false;
     }
 
+    //check handling
     for (int i = 4 + castle_shift; i < 7 + castle_shift; i++)
     {
         clear(&bitboards[5 + color_shift], 4 + castle_shift);
@@ -1270,27 +1377,32 @@ bool GameState::queenside_eligibility()
         color_shift = 0;
     }
 
+    //king position
     if (!read(bitboards[5 + color_shift], 4 + castle_shift)) {
         return false;
     }
 
+    //rook position
     if (!read(bitboards[3 + color_shift], castle_shift)) {
         return false;
     }
 
+    //in between square
     if (read(bitboards[6], 1 + castle_shift) || read(bitboards[13], 1 + castle_shift)) {
         return false;
     }
 
+    //in between square
     if (read(bitboards[6], 2 + castle_shift) || read(bitboards[13], 2 + castle_shift)) {
         return false;
     }
 
+    //in between square
     if (read(bitboards[6], 3 + castle_shift) || read(bitboards[13], 3 + castle_shift)) {
         return false;
     }
 
-
+    //check handling
     for (int i = 2 + castle_shift; i < 5 + castle_shift; i++)
     {
         clear(&bitboards[5 + color_shift], 4 + castle_shift);
