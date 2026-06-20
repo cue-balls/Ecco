@@ -1,0 +1,31 @@
+#myBoard {
+    width: 700px; 
+    position: absolute; 
+    top:50%; left: 50%; 
+    transform: translate(-50%, -50%);
+}
+
+#play_w {
+    background-color: white;
+    border-width: 2px;
+    border-color: black;
+    width: 15%;
+    height: 50px;
+    font-size: 16px;
+    position: relative;
+    top: 350px;
+    left: 625px;
+}
+
+#play_b {
+    background-color: black;
+    border-width: 2px;
+    border-color: white;
+    width: 15%;
+    height: 50px;
+    font-size: 16px;
+    color: white;
+    position: relative;
+    top: 420px;
+    left: 393px;
+}
