@@ -7,10 +7,11 @@ const config = {
   position: 'start',
   pieceTheme: 'https://chessboardjs.com/img/chesspieces/wikipedia/{piece}.png',
   draggable: true,
-  snapSpeed: 50,
-  moveSpeed: 150,
+  snapSpeed: 0,
+  moveSpeed: 250,
   onDragStart: onDragStart,
   onDrop: onDrop,
+  onSnapEnd: onSnapEnd,
 };
 
 const chess = new Chess();
@@ -22,8 +23,10 @@ var turn = "white";
 const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
 function onDragStart (source, piece, position) {
-  //console.log(player_color);
-  //console.log(turn);
+  if (chess.isGameOver()) {
+    return false;
+  }
+
   if ((player_color == "white" && piece.search(/^w/) === -1) ||
       (player_color == "black" && piece.search(/^b/) === -1) ||
     player_color != turn) {
@@ -31,43 +34,40 @@ function onDragStart (source, piece, position) {
   }
 }
 
-function onDrop (source, target, piece, newPos, oldPos, orientation) {
-  //console.log("drop");
-  //console.log(chess.fen());
+function onSnapEnd (piece, square, position, orientation) {
+  board.position(chess.fen(), false);
+}
 
+function onDrop (source, target, piece, newPos, oldPos, orientation) {
   const verboseMoves = chess.moves({ verbose: true });
   const lanMovesList = verboseMoves.map(move => move.lan);
-  //console.log(source + target);
 
   var validate = false;
 
   lanMovesList.forEach((move) => {
-    //console.log(move == source + target);
-    if (move == source + target) {
+    if (move == source + target || move == source + target + "q") {
       validate = true;
-      chess.move({from: source, to: target});
-      //board.position(chess.fen());
+      chess.move({from: source, to: target, promotion: "q"});
+      board.position(chess.fen(), false);
 
       if (turn == "white")
       {
-        //console.log("w")
         turn = "black";
       }
       else
       {
-        //console.log("b");
         turn = "white";
       }
 
     }
   });
 
-  //console.log(validate);
   if (!validate) {
     return "snapback";
   }
 
-  board.position(chess.fen());
+
+  
   updateBoard().then(() => {
     if (!chess.isGameOver())
     {
@@ -82,6 +82,7 @@ function onDrop (source, target, piece, newPos, oldPos, orientation) {
         turn = "white";
       }
     }
+    
     board.position(chess.fen());  
   });
 }
