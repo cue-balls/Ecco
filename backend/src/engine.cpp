@@ -30,11 +30,14 @@
 #include "bitwise.h"
 
 
+int alpha_beta(GameState* state, int alpha, int beta, int depth);
+
+
 int main() {
     httplib::Server svr;
 
     svr.Options(R"(/.*)", [](const httplib::Request& req, httplib::Response& res) {
-        res.set_header("Access-Control-Allow-Origin", "*"); // Change * to your specific frontend URL if needed
+        res.set_header("Access-Control-Allow-Origin", "*");
         res.set_header("Access-Control-Allow-Methods", "POST, GET, OPTIONS");
         res.set_header("Access-Control-Allow-Headers", "Content-Type, Authorization");
         res.status = 200;
@@ -45,14 +48,34 @@ int main() {
         res.set_header("Access-Control-Allow-Origin", "*");
 
         std::cout << "received" << std::endl;
-        GameState game(req.body);
+        GameState * game = new GameState(req.body);
 
-        std::vector<std::uint16_t> moves = game.get_legal_moves();
+        std::vector<std::uint16_t> moves = game->get_legal_moves();
+
         std::string out;
         
         if (moves.size() != 0)
         {
-            std::uint16_t move = moves[0];
+            int alpha = -100000;
+            int beta = 100000;
+
+            std::uint16_t move;
+            int best_eval = -1000000;
+
+            for (std::uint16_t m : moves)
+            {
+                game->make_move(m);
+                int eval = -alpha_beta(game, -beta, -alpha, 7);
+                game->unmake_move(m);
+
+                if (eval > best_eval) {
+                    best_eval = eval;
+                    move = m;
+                }
+
+                alpha = std::max(alpha, eval);
+            }
+
 
             out += int_to_square(move & 63);
             out += int_to_square((move >> 6) & 63);
@@ -152,4 +175,71 @@ int main() {
 */
 
     return 0;
+}
+
+
+
+int alpha_beta(GameState* state, int alpha, int beta, int depth)
+{
+    if (depth == 0) {
+        return state->evaluate();
+    }
+    
+    std::vector<std::uint16_t> legal_moves = state->get_legal_moves();
+    if (legal_moves.size() == 0)
+    {
+        if (state->in_check(state->white_to_move)) {
+            return -50000 - depth;
+        }
+
+        return 0;
+    }
+
+
+    int root_eval = state->evaluate();
+    int max_eval = -100000;
+    
+    std::vector<std::pair<std::uint16_t, int>> evaluated_moves;
+
+    for (std::uint16_t move : legal_moves) {
+        state->make_move(move);
+        int eval = state->evaluate();
+        state->unmake_move(move);
+        
+        evaluated_moves.push_back({move, eval});
+    }
+
+    std::sort(evaluated_moves.begin(), evaluated_moves.end(), [](const auto& a, const auto& b) {
+        return a.second < b.second;
+    });
+
+    for (int i = 0; i < legal_moves.size(); i++) {
+        legal_moves[i] = evaluated_moves[i].first;
+    }
+
+    for (std::uint16_t m : legal_moves)
+    {
+        state->make_move(m);
+        int current_eval = state->evaluate();
+        
+        int adj_depth = depth - 1;
+        if (root_eval - current_eval >= 400) {
+            adj_depth /= 2;
+        }
+        
+
+        int eval = -1 * alpha_beta(state, -1 * beta, -1 * alpha, adj_depth);
+
+
+        state->unmake_move(m);
+
+        max_eval = std::max(max_eval, eval);
+        alpha = std::max(alpha, eval);
+
+        if (alpha >= beta) {
+            break;
+        }
+    }
+
+    return max_eval;
 }

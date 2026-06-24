@@ -24,6 +24,7 @@ class GameState {
 
         //piece lookup array
         inline static const char piece_order[] = {'P', 'N', 'B', 'R', 'Q', 'K', '-', 'p', 'n', 'b', 'r', 'q', 'k', '-'};
+        inline static const int piece_value[] = {100, 300, 300, 500, 900, 0, 0, 100, 300, 300, 500, 900, 0, 0};
         
         GameState();
         GameState(std::string FEN);
@@ -39,6 +40,7 @@ class GameState {
         void make_move(std::uint16_t move);
         void unmake_move(std::uint16_t move);
         std::vector<std::uint16_t> get_legal_moves();
+        int evaluate();
 
     private:
 

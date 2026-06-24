@@ -96,13 +96,20 @@ white_button.addEventListener('click', async () => {
 
     if (!chess.isGameOver())
     {
-      if (chess.turn() == "b")
+      if (chess.turn() == "w")
+      {
+        turn = "white";
+      }
+      else
       {
         turn = "black";
+      }
+
+      if (turn == "black")
+      {
         playEngineMove();
         await delay(500);
         board.position(chess.fen());
-        turn = "white";
       }
     }
 });
@@ -137,7 +144,6 @@ black_button.addEventListener('click', async () => {
       playEngineMove();
       await delay(500);
       board.position(chess.fen());
-      turn = "black";
     }
 
     
