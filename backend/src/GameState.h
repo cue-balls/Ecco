@@ -32,6 +32,7 @@ class GameState {
         
         std::vector<std::uint8_t> get_attack_ray(char attacking_piece, std::uint8_t origin);
         bool in_check(bool white);
+        bool validate_move(std::uint16_t move);
         bool kingside_eligibility();
         bool queenside_eligibility();
 

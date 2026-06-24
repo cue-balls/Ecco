@@ -2,6 +2,7 @@ import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0-beta.6/+esm';
 
 const white_button = document.getElementById("play_w");
 const black_button = document.getElementById("play_b");
+const textbox = document.getElementById("fen");
 
 const config = {
   position: 'start',
@@ -71,19 +72,8 @@ function onDrop (source, target, piece, newPos, oldPos, orientation) {
   updateBoard().then(() => {
     if (!chess.isGameOver())
     {
-      chess.move(chess.moves()[0]);
-
-      if (turn == "white")
-      {
-        turn = "black";
-      }
-      else
-      {
-        turn = "white";
-      }
+      playEngineMove(); 
     }
-    
-    board.position(chess.fen());  
   });
 }
 
@@ -91,12 +81,30 @@ async function updateBoard() {
   await delay(500);
 }
 
-white_button.addEventListener('click', () => {
+white_button.addEventListener('click', async () => {
     player_color = "white";
     board = Chessboard("myBoard", config);
     board.orientation("white");
     white_button.style.display = "none";
     black_button.style.display = "none";
+
+    if (textbox.value != "")
+    {
+      chess.load(textbox.value);
+      board.position(textbox.value);
+    }
+
+    if (!chess.isGameOver())
+    {
+      if (chess.turn() == "b")
+      {
+        turn = "black";
+        playEngineMove();
+        await delay(500);
+        board.position(chess.fen());
+        turn = "white";
+      }
+    }
 });
 
 black_button.addEventListener('click', async () => {
@@ -106,10 +114,96 @@ black_button.addEventListener('click', async () => {
     white_button.style.display = "none";
     black_button.style.display = "none";
 
-    chess.move(chess.moves()[0]);
-    await delay(500);
-    board.position(chess.fen());
-    turn = "black";
+    if (textbox.value != "")
+    {
+      chess.load(textbox.value);
+      board.position(textbox.value);
+    }
+
+    if (!chess.isGameOver())
+    {
+      if (chess.turn() == "w")
+      {
+        turn = "white";
+      }
+      else
+      {
+        turn = "black";
+      }
+    }
+
+    if (turn == "white")
+    {
+      playEngineMove();
+      await delay(500);
+      board.position(chess.fen());
+      turn = "black";
+    }
+
+    
 });
 
 
+async function fetchEngineMove() {
+  let data;
+  try {
+        const response = await fetch("http://127.0.0.1:8080/data", {
+          method: "POST",
+          headers: {
+            "Content-Type": "text/plain"
+          },
+
+          body: chess.fen()
+        });
+        
+        if (!response.ok) {
+            throw new Error(`HTTP error! Status: ${response.status}`);
+        }
+
+        data = await response.json();
+        console.log('Data retrieved from C++:', data);
+  } catch (error) {
+        console.error('Error fetching data:', error);
+  }
+
+
+  return data.move;
+}
+
+async function parseMove() {
+  const move = await fetchEngineMove();
+  return move.toString();
+}
+
+function playEngineMove() {
+  let engineMove;
+  let start;
+  let end;
+  let promote;
+
+  fetchEngineMove().then((move) => {
+    engineMove = move.toString();
+    console.log(engineMove);
+    start = engineMove.substring(0, 2);
+    end = engineMove.substring(2, 4);
+    promote = 'q';
+
+    if (engineMove.length == 5) {
+      promote = engineMove[4];
+    }
+
+    chess.move({from: start, to: end, promotion: promote});
+
+    if (turn == "white")
+    {
+      turn = "black";
+    }
+    else
+    {
+      turn = "white";
+    }
+
+    board.position(chess.fen());  
+
+  });
+}

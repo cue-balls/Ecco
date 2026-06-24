@@ -1050,12 +1050,7 @@ std::vector<std::uint16_t> GameState::get_legal_moves()
                 //last step in move validation is to determine if king would be vulnerable if the move were played
                 //since making and unmaking moves is already necessary it can be repurposed here
 
-                make_move(move);
-                if (!in_check(!white_to_move)) {
-                    legal_moves.push_back(move);
-                }
-
-                unmake_move(move);
+                if (validate_move(move)) legal_moves.push_back(move);
             }
         }
 
@@ -1075,13 +1070,13 @@ std::vector<std::uint16_t> GameState::get_legal_moves()
                     for (int i = 8; i < 12; i++)
                     {
                         move |= (i << 12);
-                        legal_moves.push_back(move);
+                        if (validate_move(move)) legal_moves.push_back(move);
                         move &= 4095;
                     }
                 }
                 else
                 {
-                    legal_moves.push_back(move);
+                    if (validate_move(move)) legal_moves.push_back(move);
                 }
             }
 
@@ -1094,7 +1089,7 @@ std::vector<std::uint16_t> GameState::get_legal_moves()
                 {
                     std::uint16_t move = ((from_square - 16) << 6) | from_square;
                     set(&move, 12);
-                    legal_moves.push_back(move);
+                    if (validate_move(move)) legal_moves.push_back(move);
                 }
             }
 
@@ -1112,14 +1107,14 @@ std::vector<std::uint16_t> GameState::get_legal_moves()
                         for (int i = 12; i < 16; i++)
                         {
                             move |= (i << 12);
-                            legal_moves.push_back(move);
+                            if (validate_move(move)) legal_moves.push_back(move);
                             move &= 4095;
                         }
                     }
                     else
                     {
                         set(&move, 14);
-                        legal_moves.push_back(move);
+                        if (validate_move(move)) legal_moves.push_back(move);
                     }
                 }
 
@@ -1130,7 +1125,7 @@ std::vector<std::uint16_t> GameState::get_legal_moves()
                     std::uint16_t move = ((from_square - 9) << 6) | from_square;
                     set(&move, 14);
                     set(&move, 12);
-                    legal_moves.push_back(move);
+                    if (validate_move(move)) legal_moves.push_back(move);
                 }
             }
 
@@ -1148,14 +1143,14 @@ std::vector<std::uint16_t> GameState::get_legal_moves()
                         for (int i = 12; i < 16; i++)
                         {
                             move |= (i << 12);
-                            legal_moves.push_back(move);
+                            if (validate_move(move)) legal_moves.push_back(move);
                             move &= 4095;
                         }
                     }
                     else
                     {
                         set(&move, 14);
-                        legal_moves.push_back(move);
+                        if (validate_move(move)) legal_moves.push_back(move);
                     }
                 }
 
@@ -1166,7 +1161,7 @@ std::vector<std::uint16_t> GameState::get_legal_moves()
                     std::uint16_t move = ((from_square - 7) << 6) | from_square;
                     set(&move, 14);
                     set(&move, 12);
-                    legal_moves.push_back(move);
+                    if (validate_move(move)) legal_moves.push_back(move);
                 }
             }
         }
@@ -1184,13 +1179,13 @@ std::vector<std::uint16_t> GameState::get_legal_moves()
                     for (int i = 8; i < 12; i++)
                     {
                         move |= (i << 12);
-                        legal_moves.push_back(move);
+                        if (validate_move(move)) legal_moves.push_back(move);
                         move &= 4095;
                     }
                 }
                 else
                 {
-                    legal_moves.push_back(move);
+                    if (validate_move(move)) legal_moves.push_back(move);
                 }
             }
 
@@ -1203,7 +1198,7 @@ std::vector<std::uint16_t> GameState::get_legal_moves()
                 {
                     std::uint16_t move = ((from_square + 16) << 6) | from_square;
                     set(&move, 12);
-                    legal_moves.push_back(move);
+                    if (validate_move(move)) legal_moves.push_back(move);
                 }
             }
 
@@ -1219,14 +1214,14 @@ std::vector<std::uint16_t> GameState::get_legal_moves()
                         for (int i = 12; i < 16; i++)
                         {
                             move |= (i << 12);
-                            legal_moves.push_back(move);
+                            if (validate_move(move)) legal_moves.push_back(move);
                             move &= 4095;
                         }
                     }
                     else
                     {
                         set(&move, 14);
-                        legal_moves.push_back(move);
+                        if (validate_move(move)) legal_moves.push_back(move);
                     }
                 }
 
@@ -1237,7 +1232,7 @@ std::vector<std::uint16_t> GameState::get_legal_moves()
                     std::uint16_t move = ((from_square + 7) << 6) | from_square;
                     set(&move, 14);
                     set(&move, 12);
-                    legal_moves.push_back(move);
+                    if (validate_move(move)) legal_moves.push_back(move);
                 }
                 
             }
@@ -1254,14 +1249,14 @@ std::vector<std::uint16_t> GameState::get_legal_moves()
                         for (int i = 12; i < 16; i++)
                         {
                             move |= (i << 12);
-                            legal_moves.push_back(move);
+                            if (validate_move(move)) legal_moves.push_back(move);
                             move &= 4095;
                         }
                     }
                     else
                     {
                         set(&move, 14);
-                        legal_moves.push_back(move);
+                        if (validate_move(move)) legal_moves.push_back(move);
                     }
                 }
 
@@ -1272,7 +1267,7 @@ std::vector<std::uint16_t> GameState::get_legal_moves()
                     std::uint16_t move = ((from_square + 9) << 6) | from_square;
                     set(&move, 14);
                     set(&move, 12);
-                    legal_moves.push_back(move);
+                    if (validate_move(move)) legal_moves.push_back(move);
                 }
             }
         }
@@ -1314,6 +1309,14 @@ std::vector<std::uint16_t> GameState::get_legal_moves()
 
 
     return legal_moves;
+}
+
+bool GameState::validate_move(std::uint16_t move)
+{
+    make_move(move);
+    bool validate = !in_check(!white_to_move);
+    unmake_move(move);
+    return validate;
 }
 
 bool GameState::kingside_eligibility()
