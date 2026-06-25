@@ -108,11 +108,11 @@ int main() {
         
     });
 
-    std::cout << "Server listening on 0.0.0.0:8080" << std::endl;
-    svr.listen("0.0.0.0", 8080);
+    //std::cout << "Server listening on 0.0.0.0:8080" << std::endl;
+    //svr.listen("0.0.0.0", 8080);
 
 
-    /*
+    
     std::uint64_t num = 0;
     set(&num, 4);
     set(&num, 1);
@@ -129,7 +129,7 @@ int main() {
     //view_bitboard(board);
     //std::cout << std::endl;
     
-    GameState state("1r6/p1pNppkp/5P2/4P3/3P4/8/PPP3PP/RNB1K1NR w KQ - 0 1");
+    GameState state("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
 
     //state.make_move(2745);
     //state.make_move(1153);
@@ -161,21 +161,45 @@ int main() {
 
     state.white_to_move = !state.white_to_move;
     std::vector<std::uint16_t> moves = state.get_legal_moves();
-    std::cout << moves.size() << std::endl;
+    //std::cout << moves.size() << std::endl;
 
     for (std::uint16_t move : moves)
     {
         std::string from = int_to_square(move & 63);
         std::string to = int_to_square((move >> 6) & 63);
-        std::cout << from << to  << " --> " << (int)((move >> 12) & 15) << std::endl;
+        //std::cout << from << to  << " --> " << (int)((move >> 12) & 15) << std::endl;
     } 
 
-    state.make_move(moves[0]);
-    std::cout << state.in_check(false) << std::endl;
-*/
+    std::cout << bitscan_forward(state.bitboards[3]) << std:: endl;
+    std::cout << bitscan_reverse(state.bitboards[3]) << std:: endl;
+    //state.make_move(moves[0]);
+   // std::cout << state.in_check(false) << std::endl;
+
+
+    std::vector<std::uint8_t> white_pawns = serialize(state.bitboards[0]);
+    for (std::uint8_t sq : white_pawns)
+    {
+        std::cout << (int)sq << std::endl;
+    }
+
 
     return 0;
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
