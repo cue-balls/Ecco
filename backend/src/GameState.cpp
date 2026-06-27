@@ -295,7 +295,7 @@ void GameState::make_move(std::uint16_t move)
 
     //en passant eligibility only lasts for 1 turn and therefore must be reset each move
     std::uint8_t en_passant = 255;
-    char capture = '-';
+    std::uint8_t capture;
 
     //this loop searches for piece on from square and moves it to target square
     for (int board = 0; board < 14; board++)
@@ -345,7 +345,7 @@ void GameState::make_move(std::uint16_t move)
             }
             
             
-            capture = piece_order[board];
+            capture = board;
         }
     }
     
@@ -433,13 +433,13 @@ void GameState::make_move(std::uint16_t move)
         {
             clear(&bitboards[7], target_square + 8);
             clear(&bitboards[13], target_square + 8);
-            capture = 'p';
+            capture = 7;
         }
         else if (target_square / 8 == 5)
         {
             clear(&bitboards[0], target_square - 8);
             clear(&bitboards[6], target_square - 8);
-            capture = 'P';
+            capture = 0;
         }
     }
 
@@ -515,17 +515,24 @@ void GameState::unmake_move(std::uint16_t move)
     std::uint8_t target_square = (move >> 6) & 63;
     std::uint8_t special_move_data = (move >> 12) & 15;
     std::uint8_t captured_board;
+    std::uint8_t capture = undo.captured_piece;
 
-    if (read(special_move_data, 2))
+    //handling non en passant captures
+    if (read(special_move_data, 2) && special_move_data != 5)
     {
-        for (int i = 0; i < 14; i++)
+        set(&bitboards[capture], target_square);
+
+        if (captured_board < 6)
         {
-            if (piece_order[i] == undo.captured_piece) {
-                captured_board = i;
-            }
+            set(&bitboards[6], target_square);
+        }
+        else
+        {
+            set(&bitboards[13], target_square);
         }
     }
     
+
     int board;
     for (board = 0; board < 14; board++)
     {
@@ -548,22 +555,6 @@ void GameState::unmake_move(std::uint16_t move)
             {
                 clear(&bitboards[13], target_square);
                 set(&bitboards[13], from_square);
-            }
-
-
-            //handling non en passant captures
-            if (read(special_move_data, 2) && special_move_data != 5) 
-            {
-                set(&bitboards[captured_board], target_square);
-
-                if (captured_board < 6)
-                {
-                    set(&bitboards[6], target_square);
-                }
-                else
-                {
-                    set(&bitboards[13], target_square);
-                }
             }
 
             break;
@@ -625,6 +616,7 @@ void GameState::unmake_move(std::uint16_t move)
         }
     }
 
+    
     std::uint8_t color_shift = 0;
     if (board > 6) {
         color_shift = 7;

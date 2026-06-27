@@ -129,9 +129,10 @@ int main() {
     //view_bitboard(board);
     //std::cout << std::endl;
     
-    GameState state("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
+    GameState state("r4q2/2P4R/8/5pk1/3B2b1/8/2K1Q3/8 w - - 0 1");
 
-    //state.make_move(2745);
+    state.make_move(18868);
+    state.unmake_move(18868);
     //state.make_move(1153);
     //state.make_move(1642);
     //state.make_move(2130);
@@ -139,7 +140,11 @@ int main() {
     //state.make_move(19617);
     
 
-    state.view_gamestate();
+    std::uint64_t rook_attacks = 0;
+    fillNorth(&rook_attacks, 28);
+    fillSouth(&rook_attacks, 28);
+    //state.view_gamestate();
+    view_bitboard(rook_attacks);
     //std::cout << std::endl;
     //view_bitboard(state.bitboards[6]);
     //std:: cout << std::endl;
@@ -170,8 +175,8 @@ int main() {
         //std::cout << from << to  << " --> " << (int)((move >> 12) & 15) << std::endl;
     } 
 
-    std::cout << bitscan_forward(state.bitboards[3]) << std:: endl;
-    std::cout << bitscan_reverse(state.bitboards[3]) << std:: endl;
+    //std::cout << bitscan_forward(state.bitboards[3]) << std:: endl;
+    //std::cout << bitscan_reverse(state.bitboards[3]) << std:: endl;
     //state.make_move(moves[0]);
    // std::cout << state.in_check(false) << std::endl;
 
@@ -179,7 +184,7 @@ int main() {
     std::vector<std::uint8_t> white_pawns = serialize(state.bitboards[0]);
     for (std::uint8_t sq : white_pawns)
     {
-        std::cout << (int)sq << std::endl;
+        //std::cout << (int)sq << std::endl;
     }
 
 
@@ -252,7 +257,7 @@ int alpha_beta(GameState* state, int alpha, int beta, int depth)
         }
         
 
-        int eval = -1 * alpha_beta(state, -1 * beta, -1 * alpha, adj_depth);
+        int eval = -alpha_beta(state, -beta, -alpha, adj_depth);
 
 
         state->unmake_move(m);

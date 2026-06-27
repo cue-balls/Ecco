@@ -110,3 +110,21 @@ std::vector<std::uint8_t> serialize(std::uint64_t bitboard) {
 
     return indices;
 }
+
+void fillNorth(std::uint64_t* ray, std::uint8_t square) {
+    std::uint64_t mask = (1ULL << square - 8);
+    mask |= (mask >> 8);
+    mask |= (mask >> 16);
+    mask |= (mask >> 32);
+    
+    *ray |= mask;
+}
+
+void fillSouth(std::uint64_t* ray, std::uint8_t square) {
+    std::uint64_t mask = (1ULL << square + 8);
+    mask |= (mask << 8);
+    mask |= (mask << 16);
+    mask |= (mask << 32);
+    
+    *ray |= mask;
+}

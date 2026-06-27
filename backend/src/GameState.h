@@ -6,7 +6,7 @@
 #include <cstdint>
 
 struct UndoState {
-    char captured_piece;
+    std::uint8_t captured_piece;
     std::uint8_t en_passant_square;
     std::uint8_t castling_rights;
 };
