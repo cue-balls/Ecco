@@ -111,20 +111,40 @@ std::vector<std::uint8_t> serialize(std::uint64_t bitboard) {
     return indices;
 }
 
-void fillNorth(std::uint64_t* ray, std::uint8_t square) {
-    std::uint64_t mask = (1ULL << square - 8);
-    mask |= (mask >> 8);
-    mask |= (mask >> 16);
-    mask |= (mask >> 32);
+std::uint64_t fillNorth(std::uint64_t gen) {
+    gen |= (gen >> 8);
+    gen |= (gen >> 16);
+    gen |= (gen >> 32);
     
-    *ray |= mask;
+    return gen;
 }
 
-void fillSouth(std::uint64_t* ray, std::uint8_t square) {
-    std::uint64_t mask = (1ULL << square + 8);
-    mask |= (mask << 8);
-    mask |= (mask << 16);
-    mask |= (mask << 32);
+std::uint64_t fillSouth(std::uint64_t gen) {
+    gen |= (gen << 8);
+    gen |= (gen << 16);
+    gen |= (gen << 32);
     
-    *ray |= mask;
+    return gen;
+}
+
+std::uint64_t fillEast(std::uint64_t gen) {
+    std::uint64_t primary = ~Bitwise::AFILE;
+    std::uint64_t secondary = (primary << 1) & primary;
+    std::uint64_t tertiary = (secondary << 2) & secondary;
+    gen |= ((gen << 1) & primary);
+    gen |= ((gen << 2) & secondary);
+    gen |= ((gen << 4) & tertiary);
+
+    return gen;
+}
+
+std::uint64_t fillWest(std::uint64_t gen) {
+    std::uint64_t primary = ~Bitwise::HFILE;
+    std::uint64_t secondary = (primary >> 1) & primary;
+    std::uint64_t tertiary = (secondary >> 2) & secondary;
+    gen |= ((gen >> 1) & primary);
+    gen |= ((gen >> 2) & secondary);
+    gen |= ((gen >> 4) & tertiary);
+
+    return gen;
 }

@@ -19,9 +19,10 @@ std::vector<std::uint8_t> serialize(std::uint64_t bitboard);
 std::uint8_t square_to_int(std::string square);
 std::string int_to_square(std::uint8_t square);
 
-void fillNorth(std::uint64_t* ray, std::uint8_t square);
-void fillSouth(std::uint64_t* ray, std::uint8_t square);
-
+std::uint64_t fillNorth(std::uint64_t gen);
+std::uint64_t fillSouth(std::uint64_t gen);
+std::uint64_t fillEast(std::uint64_t gen);
+std::uint64_t fillWest(std::uint64_t gen);
 
 namespace Bitwise {
     inline const std::uint64_t AFILE = 0x101010101010101;

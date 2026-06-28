@@ -139,12 +139,10 @@ int main() {
     //state.make_move(17049);
     //state.make_move(19617);
     
+    GameState::populate_attacks();
 
-    std::uint64_t rook_attacks = 0;
-    fillNorth(&rook_attacks, 28);
-    fillSouth(&rook_attacks, 28);
     //state.view_gamestate();
-    view_bitboard(rook_attacks);
+    view_bitboard(GameState::piece_attacks[3][2]);
     //std::cout << std::endl;
     //view_bitboard(state.bitboards[6]);
     //std:: cout << std::endl;

@@ -659,6 +659,44 @@ void GameState::unmake_move(std::uint16_t move)
 
 
 
+void GameState::populate_attacks()
+{
+    for (int i = 0; i < 6; i++) {
+        piece_attacks.push_back(std::vector<std::uint64_t>(64));
+    }
+
+
+    for (int square = 0; square < 64; square++)
+    {
+        for (int p = 0; p < 6; p++)
+        {
+            switch (p) {
+                case 0:
+                    break;
+                case 1:
+                    break;
+                case 2:
+                    break;
+                case 3:
+                    std::uint64_t rays = 0;
+                    rays |= fillNorth(1 << square);
+                    rays |= fillSouth(1 << square);
+                    rays |= fillEast(1 << square);
+                    rays |= fillWest(1 << square);
+                    clear(&rays, square);
+                    piece_attacks[p][square] = rays;
+                    break;
+                
+            }
+        }
+    }
+}
+
+
+
+
+
+
 //takes an input piece and generates all squares it exerts pressure on
 //includes all squares that can be moved to and all same color pieces it is defending
 //pawn moves are more complicated and are calculated separately

@@ -25,12 +25,15 @@ class GameState {
         //piece lookup array
         inline static const char piece_order[] = {'P', 'N', 'B', 'R', 'Q', 'K', '-', 'p', 'n', 'b', 'r', 'q', 'k', '-'};
         inline static const int piece_value[] = {100, 300, 300, 500, 900, 0, 0, 100, 300, 300, 500, 900, 0, 0};
+        inline static std::vector<std::vector<std::uint64_t>> piece_attacks;
         
         GameState();
         GameState(std::string FEN);
         void view_gamestate();
         char square_occupancy(std::uint8_t square);
-        
+
+
+        static void populate_attacks();
         std::vector<std::uint8_t> get_attack_ray(char attacking_piece, std::uint8_t origin);
         bool in_check(bool white);
         bool validate_move(std::uint16_t move);
@@ -43,5 +46,6 @@ class GameState {
         int evaluate();
 
     private:
+    
 
 };
