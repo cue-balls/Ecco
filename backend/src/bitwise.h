@@ -19,10 +19,19 @@ std::vector<std::uint8_t> serialize(std::uint64_t bitboard);
 std::uint8_t square_to_int(std::string square);
 std::string int_to_square(std::uint8_t square);
 
-std::uint64_t fillNorth(std::uint64_t gen);
-std::uint64_t fillSouth(std::uint64_t gen);
-std::uint64_t fillEast(std::uint64_t gen);
-std::uint64_t fillWest(std::uint64_t gen);
+std::uint64_t fill_north(std::uint64_t gen);
+std::uint64_t fill_south(std::uint64_t gen);
+std::uint64_t fill_east(std::uint64_t gen);
+std::uint64_t fill_west(std::uint64_t gen);
+std::uint64_t fill_northeast(std::uint64_t gen);
+std::uint64_t fill_northwest(std::uint64_t gen);
+std::uint64_t fill_southeast(std::uint64_t gen);
+std::uint64_t fill_southwest(std::uint64_t gen);
+
+std::uint64_t occlude_north(std::uint64_t ray, std::uint64_t occupancy, std::uint8_t square);
+std::uint64_t occlude_south(std::uint64_t ray, std::uint64_t occupancy, std::uint8_t square);
+std::uint64_t occlude_east(std::uint64_t ray, std::uint64_t occupancy, std::uint8_t square);
+std::uint64_t occlude_west(std::uint64_t ray, std::uint64_t occupancy, std::uint8_t square);
 
 namespace Bitwise {
     inline const std::uint64_t AFILE = 0x101010101010101;

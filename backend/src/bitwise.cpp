@@ -111,7 +111,7 @@ std::vector<std::uint8_t> serialize(std::uint64_t bitboard) {
     return indices;
 }
 
-std::uint64_t fillNorth(std::uint64_t gen) {
+std::uint64_t fill_north(std::uint64_t gen) {
     gen |= (gen >> 8);
     gen |= (gen >> 16);
     gen |= (gen >> 32);
@@ -119,7 +119,7 @@ std::uint64_t fillNorth(std::uint64_t gen) {
     return gen;
 }
 
-std::uint64_t fillSouth(std::uint64_t gen) {
+std::uint64_t fill_south(std::uint64_t gen) {
     gen |= (gen << 8);
     gen |= (gen << 16);
     gen |= (gen << 32);
@@ -127,7 +127,7 @@ std::uint64_t fillSouth(std::uint64_t gen) {
     return gen;
 }
 
-std::uint64_t fillEast(std::uint64_t gen) {
+std::uint64_t fill_east(std::uint64_t gen) {
     std::uint64_t primary = ~Bitwise::AFILE;
     std::uint64_t secondary = (primary << 1) & primary;
     std::uint64_t tertiary = (secondary << 2) & secondary;
@@ -138,7 +138,7 @@ std::uint64_t fillEast(std::uint64_t gen) {
     return gen;
 }
 
-std::uint64_t fillWest(std::uint64_t gen) {
+std::uint64_t fill_west(std::uint64_t gen) {
     std::uint64_t primary = ~Bitwise::HFILE;
     std::uint64_t secondary = (primary >> 1) & primary;
     std::uint64_t tertiary = (secondary >> 2) & secondary;
@@ -147,4 +147,76 @@ std::uint64_t fillWest(std::uint64_t gen) {
     gen |= ((gen >> 4) & tertiary);
 
     return gen;
+}
+
+std::uint64_t fill_northeast(std::uint64_t gen) {
+    std::uint64_t primary = ~Bitwise::AFILE;
+    std::uint64_t secondary = (primary << 1) & primary;
+    std::uint64_t tertiary = (secondary << 2) & secondary;
+    gen |= ((gen >> 7) & primary);
+    gen |= ((gen >> 14) & secondary);
+    gen |= ((gen >> 28) & tertiary);
+    
+    return gen;
+}
+
+std::uint64_t fill_northwest(std::uint64_t gen) {
+    std::uint64_t primary = ~Bitwise::HFILE;
+    std::uint64_t secondary = (primary >> 1) & primary;
+    std::uint64_t tertiary = (secondary >> 2) & secondary;
+    gen |= ((gen >> 9) & primary);
+    gen |= ((gen >> 18) & secondary);
+    gen |= ((gen >> 36) & tertiary);
+    
+    return gen;
+}
+
+std::uint64_t fill_southeast(std::uint64_t gen) {
+    std::uint64_t primary = ~Bitwise::AFILE;
+    std::uint64_t secondary = (primary << 1) & primary;
+    std::uint64_t tertiary = (secondary << 2) & secondary;
+    gen |= ((gen << 9) & primary);
+    gen |= ((gen << 18) & secondary);
+    gen |= ((gen << 36) & tertiary);
+    
+    return gen;
+}
+
+std::uint64_t fill_southwest(std::uint64_t gen) {
+    std::uint64_t primary = ~Bitwise::HFILE;
+    std::uint64_t secondary = (primary >> 1) & primary;
+    std::uint64_t tertiary = (secondary >> 2) & secondary;
+    gen |= ((gen << 7) & primary);
+    gen |= ((gen << 14) & secondary);
+    gen |= ((gen << 28) & tertiary);
+    
+    return gen;
+}
+
+std::uint64_t occlude_north(std::uint64_t ray, std::uint64_t occupancy, std::uint8_t square) {
+    occupancy &= Bitwise::FILE_LIST[square % 8];
+    occupancy &= ((~(1ULL << 63)) >> (63 - square));
+    occupancy = fill_north(occupancy) >> 8;
+    return ray - occupancy;
+}
+
+std::uint64_t occlude_south(std::uint64_t ray, std::uint64_t occupancy, std::uint8_t square) {
+    occupancy &= Bitwise::FILE_LIST[square % 8];
+    occupancy &= (~(1ULL) << (square));
+    occupancy = fill_south(occupancy) << 8;
+    return ray - occupancy;
+}
+
+std::uint64_t occlude_east(std::uint64_t ray, std::uint64_t occupancy, std::uint8_t square) {
+    occupancy &= Bitwise::RANK_LIST[7 - square / 8];
+    occupancy &= (~(1ULL) << (square));
+    occupancy = fill_east(occupancy) << 1;
+    return ray - (occupancy & ~Bitwise::AFILE);
+}
+
+std::uint64_t occlude_west(std::uint64_t ray, std::uint64_t occupancy, std::uint8_t square) {
+    occupancy &= Bitwise::RANK_LIST[7 - square / 8];
+    occupancy &= (~(1ULL << 63) >> (63 - square));
+    occupancy = fill_west(occupancy) >> 1;
+    return ray - (occupancy & ~Bitwise::HFILE);
 }

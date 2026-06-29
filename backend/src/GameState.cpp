@@ -514,23 +514,8 @@ void GameState::unmake_move(std::uint16_t move)
     std::uint8_t from_square = move & 63;
     std::uint8_t target_square = (move >> 6) & 63;
     std::uint8_t special_move_data = (move >> 12) & 15;
-    std::uint8_t captured_board;
     std::uint8_t capture = undo.captured_piece;
 
-    //handling non en passant captures
-    if (read(special_move_data, 2) && special_move_data != 5)
-    {
-        set(&bitboards[capture], target_square);
-
-        if (captured_board < 6)
-        {
-            set(&bitboards[6], target_square);
-        }
-        else
-        {
-            set(&bitboards[13], target_square);
-        }
-    }
     
 
     int board;
@@ -601,21 +586,6 @@ void GameState::unmake_move(std::uint16_t move)
     }
 
 
-    //undoing en passant capture
-    if (special_move_data == 5)
-    {
-        if (board < 6)
-        {
-            set(&bitboards[7], target_square + 8);
-            set(&bitboards[13], target_square + 8);
-        }
-        else
-        {
-            set(&bitboards[0], target_square - 8);
-            set(&bitboards[6], target_square - 8);
-        }
-    }
-
     
     std::uint8_t color_shift = 0;
     if (board > 6) {
@@ -650,6 +620,36 @@ void GameState::unmake_move(std::uint16_t move)
         }
     }
 
+    //handling non en passant captures
+    if (read(special_move_data, 2) && special_move_data != 5)
+    {
+        set(&bitboards[capture], target_square);
+
+        if (capture < 6)
+        {
+            set(&bitboards[6], target_square);
+        }
+        else
+        {
+            set(&bitboards[13], target_square);
+        }
+    }
+
+    //undoing en passant capture
+    if (special_move_data == 5)
+    {
+        if (board < 6)
+        {
+            set(&bitboards[7], target_square + 8);
+            set(&bitboards[13], target_square + 8);
+        }
+        else
+        {
+            set(&bitboards[0], target_square - 8);
+            set(&bitboards[6], target_square - 8);
+        }
+    }
+
     white_to_move = !white_to_move;
 }
 
@@ -679,10 +679,10 @@ void GameState::populate_attacks()
                     break;
                 case 3:
                     std::uint64_t rays = 0;
-                    rays |= fillNorth(1 << square);
-                    rays |= fillSouth(1 << square);
-                    rays |= fillEast(1 << square);
-                    rays |= fillWest(1 << square);
+                    rays |= fill_north(1ULL << square);
+                    rays |= fill_south(1ULL << square);
+                    rays |= fill_east(1ULL << square);
+                    rays |= fill_west(1ULL << square);
                     clear(&rays, square);
                     piece_attacks[p][square] = rays;
                     break;

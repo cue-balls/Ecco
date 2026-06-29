@@ -34,7 +34,7 @@ int alpha_beta(GameState* state, int alpha, int beta, int depth);
 
 
 int main() {
-    httplib::Server svr;
+    /*httplib::Server svr;
 
     svr.Options(R"(/.*)", [](const httplib::Request& req, httplib::Response& res) {
         res.set_header("Access-Control-Allow-Origin", "*");
@@ -110,7 +110,7 @@ int main() {
 
     //std::cout << "Server listening on 0.0.0.0:8080" << std::endl;
     //svr.listen("0.0.0.0", 8080);
-
+*/
 
     
     std::uint64_t num = 0;
@@ -129,7 +129,7 @@ int main() {
     //view_bitboard(board);
     //std::cout << std::endl;
     
-    GameState state("r4q2/2P4R/8/5pk1/3B2b1/8/2K1Q3/8 w - - 0 1");
+    GameState state("6qk/6qq/4R3/8/2R1R1R1/8/K3R3/8 w - - 0 1");
 
     state.make_move(18868);
     state.unmake_move(18868);
@@ -141,8 +141,15 @@ int main() {
     
     GameState::populate_attacks();
 
+
+    std::uint64_t rook = GameState::piece_attacks[3][36];
+    rook = occlude_north(rook, state.bitboards[6] | state.bitboards[13], 36);
+    rook = occlude_south(rook, state.bitboards[6] | state.bitboards[13], 36);
+    rook = occlude_east(rook, state.bitboards[6] | state.bitboards[13], 36);
+    rook = occlude_west(rook, state.bitboards[6] | state.bitboards[13], 36);
     //state.view_gamestate();
-    view_bitboard(GameState::piece_attacks[3][2]);
+    //std::uint64_t bishop = (1ULL << 36);
+    view_bitboard(rook);
     //std::cout << std::endl;
     //view_bitboard(state.bitboards[6]);
     //std:: cout << std::endl;
@@ -155,23 +162,23 @@ int main() {
     //std::cout << state.square_occupancy(4) << std::endl;
     //std::cout << state.in_check(true) << std::endl;
     
-    std::vector<std::uint8_t> rook_moves = state.get_attack_ray('Q', 27);
+    //std::vector<std::uint8_t> rook_moves = state.get_attack_ray('Q', 27);
 
-    for (int i = 0; i < rook_moves.size(); i++)
-    {
+    //for (int i = 0; i < rook_moves.size(); i++)
+    //{
         //std::cout << (int)rook_moves[i] << std::endl;
-    }
+    //}
 
-    state.white_to_move = !state.white_to_move;
-    std::vector<std::uint16_t> moves = state.get_legal_moves();
+    //state.white_to_move = !state.white_to_move;
+    //std::vector<std::uint16_t> moves = state.get_legal_moves();
     //std::cout << moves.size() << std::endl;
 
-    for (std::uint16_t move : moves)
-    {
-        std::string from = int_to_square(move & 63);
-        std::string to = int_to_square((move >> 6) & 63);
+    //for (std::uint16_t move : moves)
+    //{
+      //  std::string from = int_to_square(move & 63);
+        //std::string to = int_to_square((move >> 6) & 63);
         //std::cout << from << to  << " --> " << (int)((move >> 12) & 15) << std::endl;
-    } 
+    //} 
 
     //std::cout << bitscan_forward(state.bitboards[3]) << std:: endl;
     //std::cout << bitscan_reverse(state.bitboards[3]) << std:: endl;
