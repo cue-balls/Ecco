@@ -220,3 +220,31 @@ std::uint64_t occlude_west(std::uint64_t ray, std::uint64_t occupancy, std::uint
     occupancy = fill_west(occupancy) >> 1;
     return ray - (occupancy & ~Bitwise::HFILE);
 }
+
+std::uint64_t occlude_northeast(std::uint64_t ray, std::uint64_t occupancy, std::uint8_t square) {
+    occupancy &= Bitwise::DIAGONALS[7 + (7 - square / 8) - square % 8];
+    occupancy &= (~(1ULL << 63) >> (63 - square));
+    occupancy = fill_northeast(occupancy) >> 7;
+    return ray - (occupancy & ~Bitwise::AFILE);
+}
+
+std::uint64_t occlude_northwest(std::uint64_t ray, std::uint64_t occupancy, std::uint8_t square) {
+    occupancy &= Bitwise::ANTI_DIAGONALS[(7 - square / 8) + square % 8];
+    occupancy &= (~(1ULL << 63) >> (63 - square));
+    occupancy = fill_northwest(occupancy) >> 9;
+    return ray - (occupancy & ~Bitwise::HFILE);
+}
+
+std::uint64_t occlude_southeast(std::uint64_t ray, std::uint64_t occupancy, std::uint8_t square) {
+    occupancy &= Bitwise::ANTI_DIAGONALS[(7 - square / 8) + square % 8];
+    occupancy &= (~(1ULL) << square);
+    occupancy = fill_southeast(occupancy) << 9;
+    return ray - (occupancy & ~Bitwise::AFILE);
+}
+
+std::uint64_t occlude_southwest(std::uint64_t ray, std::uint64_t occupancy, std::uint8_t square) {
+    occupancy &= Bitwise::DIAGONALS[7 + (7 - square / 8) - square % 8];
+    occupancy &= (~(1ULL) << square);
+    occupancy = fill_southwest(occupancy) << 7;
+    return ray - (occupancy & ~Bitwise::HFILE);
+}

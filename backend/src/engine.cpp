@@ -129,7 +129,7 @@ int main() {
     //view_bitboard(board);
     //std::cout << std::endl;
     
-    GameState state("6qk/6qq/4R3/8/2R1R1R1/8/K3R3/8 w - - 0 1");
+    GameState state("7k/8/2B3B1/8/4B3/8/P1B3B1/K7 w - - 0 1");
 
     state.make_move(18868);
     state.unmake_move(18868);
@@ -142,14 +142,18 @@ int main() {
     GameState::populate_attacks();
 
 
-    std::uint64_t rook = GameState::piece_attacks[3][36];
-    rook = occlude_north(rook, state.bitboards[6] | state.bitboards[13], 36);
-    rook = occlude_south(rook, state.bitboards[6] | state.bitboards[13], 36);
-    rook = occlude_east(rook, state.bitboards[6] | state.bitboards[13], 36);
-    rook = occlude_west(rook, state.bitboards[6] | state.bitboards[13], 36);
+    std::uint64_t bishop = GameState::piece_attacks[2][36];
+    bishop = occlude_northeast(bishop, state.bitboards[6] | state.bitboards[13], 36);
+    bishop = occlude_northwest(bishop, state.bitboards[6] | state.bitboards[13], 36);
+    bishop = occlude_southeast(bishop, state.bitboards[6] | state.bitboards[13], 36);
+    bishop = occlude_southwest(bishop, state.bitboards[6] | state.bitboards[13], 36);
+    //rook = occlude_north(rook, state.bitboards[6] | state.bitboards[13], 36);
+    //rook = occlude_south(rook, state.bitboards[6] | state.bitboards[13], 36);
+    //rook = occlude_east(rook, state.bitboards[6] | state.bitboards[13], 36);
+    //rook = occlude_west(rook, state.bitboards[6] | state.bitboards[13], 36);
     //state.view_gamestate();
     //std::uint64_t bishop = (1ULL << 36);
-    view_bitboard(rook);
+    view_bitboard(bishop);
     //std::cout << std::endl;
     //view_bitboard(state.bitboards[6]);
     //std:: cout << std::endl;

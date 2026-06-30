@@ -665,7 +665,7 @@ void GameState::populate_attacks()
         piece_attacks.push_back(std::vector<std::uint64_t>(64));
     }
 
-
+    std::uint64_t rays = 0;
     for (int square = 0; square < 64; square++)
     {
         for (int p = 0; p < 6; p++)
@@ -676,9 +676,16 @@ void GameState::populate_attacks()
                 case 1:
                     break;
                 case 2:
+                    rays = 0;
+                    rays |= fill_northwest(1ULL << square);
+                    rays |= fill_southeast(1ULL << square);
+                    rays |= fill_northeast(1ULL << square);
+                    rays |= fill_southwest(1ULL << square);
+                    clear(&rays, square);
+                    piece_attacks[p][square] = rays;
                     break;
                 case 3:
-                    std::uint64_t rays = 0;
+                    rays = 0;
                     rays |= fill_north(1ULL << square);
                     rays |= fill_south(1ULL << square);
                     rays |= fill_east(1ULL << square);
