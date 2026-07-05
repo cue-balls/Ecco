@@ -33,7 +33,7 @@ void clear(std::uint8_t* board, int position) {
     *board &= mask;
 }
 
-int read(std::uint64_t board, int position) {
+std::uint8_t read(std::uint64_t board, int position) {
     board = board >> position;
     return board & std::uint64_t(1);
 }
@@ -81,12 +81,12 @@ const std::vector<int> index64 = {
    13, 18,  8, 12,  7,  6,  5, 63
 };
 
-int bitscan_forward(std::uint64_t bitboard) {
+std::uint8_t bitscan_forward(std::uint64_t bitboard) {
    const std::uint64_t debruijn64 = 0x03f79d71b4cb0a89ULL;
    return index64[((bitboard ^ (bitboard-1)) * debruijn64) >> 58];
 }
 
-int bitscan_reverse(std::uint64_t bitboard) {
+std::uint8_t bitscan_reverse(std::uint64_t bitboard) {
    const std::uint64_t debruijn64 = 0x03f79d71b4cb0a89ULL;
    bitboard |= bitboard >> 1; 
    bitboard |= bitboard >> 2;

@@ -5,6 +5,8 @@
 #include <vector>
 #include <cstdint>
 
+extern std::vector<std::string> de;
+
 struct UndoState {
     std::uint8_t captured_piece;
     std::uint8_t en_passant_square;

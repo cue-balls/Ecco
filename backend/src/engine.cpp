@@ -29,12 +29,15 @@
 #include "GameState.h"
 #include "bitwise.h"
 
+std::vector<std::uint16_t> deb;
+std::vector<std::string> de;
 
 int alpha_beta(GameState* state, int alpha, int beta, int depth);
 
 
 int main() {
-    /*httplib::Server svr;
+    httplib::Server svr;
+    GameState::populate_attacks();
 
     svr.Options(R"(/.*)", [](const httplib::Request& req, httplib::Response& res) {
         res.set_header("Access-Control-Allow-Origin", "*");
@@ -75,6 +78,7 @@ int main() {
 
                 alpha = std::max(alpha, eval);
             }
+            
 
 
             out += int_to_square(move & 63);
@@ -108,52 +112,83 @@ int main() {
         
     });
 
-    //std::cout << "Server listening on 0.0.0.0:8080" << std::endl;
-    //svr.listen("0.0.0.0", 8080);
-*/
+    std::cout << "Server listening on 0.0.0.0:8080" << std::endl;
+    svr.listen("0.0.0.0", 8080);
+
 
     
-    std::uint64_t num = 0;
-    set(&num, 4);
-    set(&num, 1);
-    clear(&num, 4);
+    //std::uint64_t num = 0;
+    //set(&num, 4);
+    //set(&num, 1);
+    //clear(&num, 4);
     
     //std::cout << read(num, 1) << std::endl;
 
 
-    std::uint64_t board = 0;
-    for (int i = 0; i < 16; i++) {
-        set(&board, i);
-    }
+    //std::uint64_t board = 0;
+    //for (int i = 0; i < 16; i++) {
+      //  set(&board, i);
+    //}
 
     //view_bitboard(board);
     //std::cout << std::endl;
     
-    GameState state("7k/8/2B3B1/8/4B3/8/P1B3B1/K7 w - - 0 1");
+    GameState state("r1bqkb1r/pppppppp/n6B/8/3Pn3/N2Q4/PPP1PPPP/R3KBNR b KQkq - 0 1");
+    GameState::populate_attacks();
 
-    state.make_move(18868);
-    state.unmake_move(18868);
+    //state.make_move(3388);
+    //state.unmake_move(3388);
     //state.make_move(1153);
     //state.make_move(1642);
     //state.make_move(2130);
     //state.make_move(17049);
     //state.make_move(19617);
-    
-    GameState::populate_attacks();
+    GameState game;
+    while (1)
+    {
+        std::string fen;
+        std::getline(std::cin, fen);
+        std::uint16_t mm = std::stoi(fen.substr(2));
+        if (fen[0] == 'm') {
+           state.make_move(mm); 
+        }
+        else {
+            state.unmake_move(mm);
+        }
+
+        view_bitboard(state.bitboards[6]);
+        std::cout << std::endl;
+        state.view_gamestate();
+        std::cout << std::endl;
+       /* game = GameState(fen);
+        std::vector<std::uint16_t> moves = game.get_legal_moves();
+        game.view_gamestate();
+        std::cout << moves.size() << std::endl;
+        for (std::uint16_t m : moves)
+        {
+            game.make_move(m);
+            game.unmake_move(m);
+            //std::string from = int_to_square(m & 63);
+            //std::string to = int_to_square((m >> 6) & 63);
+            //std::cout << from << to  << " --> " << (int)((m >> 12) & 15) << std::endl;
+        }
+        view_bitboard(game.bitboards[6] | game.bitboards[13]);
+        std::cout << std::endl;*/
+    }
 
 
-    std::uint64_t bishop = GameState::piece_attacks[2][36];
-    bishop = occlude_northeast(bishop, state.bitboards[6] | state.bitboards[13], 36);
-    bishop = occlude_northwest(bishop, state.bitboards[6] | state.bitboards[13], 36);
-    bishop = occlude_southeast(bishop, state.bitboards[6] | state.bitboards[13], 36);
-    bishop = occlude_southwest(bishop, state.bitboards[6] | state.bitboards[13], 36);
+    //std::uint64_t king = GameState::piece_attacks[0][45];
+    //bishop = occlude_northeast(bishop, state.bitboards[6] | state.bitboards[13], 36);
+    //bishop = occlude_northwest(bishop, state.bitboards[6] | state.bitboards[13], 36);
+    //bishop = occlude_southeast(bishop, state.bitboards[6] | state.bitboards[13], 36);
+    //bishop = occlude_southwest(bishop, state.bitboards[6] | state.bitboards[13], 36);
     //rook = occlude_north(rook, state.bitboards[6] | state.bitboards[13], 36);
     //rook = occlude_south(rook, state.bitboards[6] | state.bitboards[13], 36);
     //rook = occlude_east(rook, state.bitboards[6] | state.bitboards[13], 36);
     //rook = occlude_west(rook, state.bitboards[6] | state.bitboards[13], 36);
-    //state.view_gamestate();
+    state.view_gamestate();
     //std::uint64_t bishop = (1ULL << 36);
-    view_bitboard(bishop);
+    //view_bitboard(king);
     //std::cout << std::endl;
     //view_bitboard(state.bitboards[6]);
     //std:: cout << std::endl;
@@ -190,11 +225,11 @@ int main() {
    // std::cout << state.in_check(false) << std::endl;
 
 
-    std::vector<std::uint8_t> white_pawns = serialize(state.bitboards[0]);
-    for (std::uint8_t sq : white_pawns)
-    {
+    //std::vector<std::uint8_t> white_pawns = serialize(state.bitboards[0]);
+    //for (std::uint8_t sq : white_pawns)
+    //{
         //std::cout << (int)sq << std::endl;
-    }
+    //}
 
 
     return 0;
@@ -258,12 +293,13 @@ int alpha_beta(GameState* state, int alpha, int beta, int depth)
     for (std::uint16_t m : legal_moves)
     {
         state->make_move(m);
+
         int current_eval = state->evaluate();
         
         int adj_depth = depth - 1;
-        if (root_eval - current_eval >= 400) {
-            adj_depth /= 2;
-        }
+        //if (root_eval - current_eval >= 400) {
+          //  adj_depth /= 2;
+        //}
         
 
         int eval = -alpha_beta(state, -beta, -alpha, adj_depth);

@@ -295,7 +295,7 @@ void GameState::make_move(std::uint16_t move)
 
     //en passant eligibility only lasts for 1 turn and therefore must be reset each move
     std::uint8_t en_passant = 255;
-    std::uint8_t capture;
+    std::uint8_t capture = 255;
 
     //this loop searches for piece on from square and moves it to target square
     for (int board = 0; board < 14; board++)
@@ -349,7 +349,6 @@ void GameState::make_move(std::uint16_t move)
         }
     }
     
-
 
     //determining changes to castling rights
     if (castling != 0)
@@ -490,7 +489,6 @@ void GameState::make_move(std::uint16_t move)
     }
 
 
-
     undo.captured_piece = capture;
     undo.castling_rights = castling;
     undo.en_passant_square = en_passant;
@@ -545,7 +543,6 @@ void GameState::unmake_move(std::uint16_t move)
             break;
         }
     }
-
 
 
     //putting rooks back if move is a castle
@@ -661,26 +658,43 @@ void GameState::unmake_move(std::uint16_t move)
 
 void GameState::populate_attacks()
 {
-    for (int i = 0; i < 6; i++) {
+    for (int i = 0; i < 5; i++) {
         piece_attacks.push_back(std::vector<std::uint64_t>(64));
     }
 
     std::uint64_t rays = 0;
     for (int square = 0; square < 64; square++)
     {
-        for (int p = 0; p < 6; p++)
+        for (int p = 0; p < 5; p++)
         {
             switch (p) {
                 case 0:
+                    rays = 0;
+                    rays |= (((1ULL << square) >> 17) & ~Bitwise::HFILE);
+                    rays |= (((1ULL << square) >> 15) & ~Bitwise::AFILE);
+                    rays |= (((1ULL << square) << 15) & ~Bitwise::HFILE);
+                    rays |= (((1ULL << square) << 17) & ~Bitwise::AFILE);
+                    rays |= (((1ULL << square) >> 10) & (~Bitwise::HFILE & (~Bitwise::HFILE >> 1)));
+                    rays |= (((1ULL << square) << 6) & (~Bitwise::HFILE & (~Bitwise::HFILE >> 1)));
+                    rays |= (((1ULL << square) << 10) & (~Bitwise::AFILE & (~Bitwise::AFILE << 1)));
+                    rays |= (((1ULL << square) >> 6) & (~Bitwise::AFILE & (~Bitwise::AFILE << 1)));
+                    piece_attacks[p][square] = rays;
                     break;
                 case 1:
-                    break;
-                case 2:
                     rays = 0;
                     rays |= fill_northwest(1ULL << square);
                     rays |= fill_southeast(1ULL << square);
                     rays |= fill_northeast(1ULL << square);
                     rays |= fill_southwest(1ULL << square);
+                    clear(&rays, square);
+                    piece_attacks[p][square] = rays;
+                    break;
+                case 2:
+                    rays = 0;
+                    rays |= fill_north(1ULL << square);
+                    rays |= fill_south(1ULL << square);
+                    rays |= fill_east(1ULL << square);
+                    rays |= fill_west(1ULL << square);
                     clear(&rays, square);
                     piece_attacks[p][square] = rays;
                     break;
@@ -690,10 +704,25 @@ void GameState::populate_attacks()
                     rays |= fill_south(1ULL << square);
                     rays |= fill_east(1ULL << square);
                     rays |= fill_west(1ULL << square);
+                    rays |= fill_northwest(1ULL << square);
+                    rays |= fill_southeast(1ULL << square);
+                    rays |= fill_northeast(1ULL << square);
+                    rays |= fill_southwest(1ULL << square);
                     clear(&rays, square);
                     piece_attacks[p][square] = rays;
                     break;
-                
+                case 4:
+                    rays = 0;
+                    rays |= (1ULL << square) << 8;
+                    rays |= (1ULL << square) >> 8;
+                    rays |= ((1ULL << square) << 1) & ~Bitwise::AFILE;
+                    rays |= ((1ULL << square) << 9) & ~Bitwise::AFILE;
+                    rays |= ((1ULL << square) >> 7) & ~Bitwise::AFILE;
+                    rays |= ((1ULL << square) >> 1) & ~Bitwise::HFILE;
+                    rays |= ((1ULL << square) >> 9) & ~Bitwise::HFILE;
+                    rays |= ((1ULL << square) << 7) & ~Bitwise::HFILE;
+                    piece_attacks[p][square] = rays;
+                    break;
             }
         }
     }
@@ -924,96 +953,78 @@ bool GameState::in_check(bool white)
         color_shift = 7;
     }
 
-    int king_square;
-
-    //looping to find where king is
-    for (int square = 0; square < 64; square++)
-    {
-        if (read(bitboards[5 + color_shift], square))
-        {
-            king_square = square;
-            break;
-        }
-    }
+    int king_square = bitscan_forward(bitboards[5 + color_shift]);
 
     //when searching for checks, we can imagine the king is another piece and look at where that piece would attack
     //those squares can then be checked to see if that piece is there
 
 
     //searching for knight checks
-    std::vector<std::uint8_t> ray = get_attack_ray(piece_order[1], king_square);
-    for (std::uint8_t square : ray)
+    std::uint64_t ray = piece_attacks[0][king_square] & bitboards[13 - color_shift];
+    std::vector<std::uint8_t> attacks = serialize(ray);
+    for (std::uint8_t square : attacks)
     {
         if (read(bitboards[8 - color_shift], square)) {
             return true;
         }
     }
 
+    ray = piece_attacks[1][king_square];
+    ray = occlude_northeast(ray, bitboards[6] | bitboards[13], king_square);
+    ray = occlude_northwest(ray, bitboards[6] | bitboards[13], king_square);
+    ray = occlude_southeast(ray, bitboards[6] | bitboards[13], king_square);
+    ray = occlude_southwest(ray, bitboards[6] | bitboards[13], king_square);
+    ray &= bitboards[13 - color_shift];
 
-
-    //pawn checks are separate
-    if (white)
+    attacks = serialize(ray);
+    for (std::uint8_t square : attacks)
     {
-        if (king_square % 8 != 0 && read(bitboards[7], king_square - 9)) {
-            return true;
-        }
-
-        if (king_square % 8 != 7 && read(bitboards[7], king_square - 7)) {
-            return true;
-        }
-    }
-    else
-    {
-        if (king_square % 8 != 0 && read(bitboards[0], king_square + 7)) {
-            return true;
-        }
-
-        if (king_square % 8 != 7 && read(bitboards[0], king_square + 9)) {
+        if (read(bitboards[9 - color_shift], square) || read(bitboards[11 - color_shift], square)) {
             return true;
         }
     }
 
+    ray = piece_attacks[2][king_square];
+    ray = occlude_north(ray, bitboards[6] | bitboards[13], king_square);
+    ray = occlude_east(ray, bitboards[6] | bitboards[13], king_square);
+    ray = occlude_south(ray, bitboards[6] | bitboards[13], king_square);
+    ray = occlude_west(ray, bitboards[6] | bitboards[13], king_square);
+    ray &= bitboards[13 - color_shift];
 
+    attacks = serialize(ray);
+    for (std::uint8_t square : attacks)
+    {
+        if (read(bitboards[10 - color_shift], square) || read(bitboards[11 - color_shift], square)) {
+            return true;
+        }
+    }
 
-    //a king can never actually give check, but for the sake of validating moves, it must be accounted for
-    ray = get_attack_ray(piece_order[5], king_square);
-    for (std::uint8_t square : ray)
+    ray = piece_attacks[4][king_square] & bitboards[13 - color_shift];
+    attacks = serialize(ray);
+    for (std::uint8_t square : attacks)
     {
         if (read(bitboards[12 - color_shift], square)) {
             return true;
         }
     }
 
-
-    //looks at the orthogonal and diagonal rays stemming from the king
-    //in other words we think of our king like a queen and check the squares it sees
-    ray = get_attack_ray(piece_order[4], king_square);
-    for (std::uint8_t square : ray)
+    if (white)
     {
-        if (!read(bitboards[13 - color_shift], square)) {
-            continue;
-        }
-
-        if (read(bitboards[11 - color_shift], square)) {
+        if (read((bitboards[7] << 7) & ~Bitwise::HFILE, king_square)) {
             return true;
         }
 
-
-        //differentiating between rook and bishop
-        std::uint8_t difference = std::max((int)king_square, (int)square) - std::min((int)king_square, (int)square);
-
-        //orthogonal check
-        if (difference % 8 == 0 && read(bitboards[10 - color_shift], square)) {
+        if (read((bitboards[7] << 9) & ~Bitwise::AFILE, king_square)) {
+            return true;
+        }
+    }
+    else
+    {
+        if (read((bitboards[0] >> 7) & ~Bitwise::AFILE, king_square)) {
             return true;
         }
 
-        //orthogonal check
-        if ((square / 8) == (king_square / 8) && read(bitboards[10 - color_shift], square)) {
-            return true;
-        }
-
-        //diagonal check
-        if (difference % 8 != 0 && (square / 8) != (king_square / 8) && read(bitboards[9 - color_shift], square)) {
+        if (read((bitboards[0] >> 9) & ~Bitwise::HFILE, king_square)) {
             return true;
         }
     }
@@ -1048,267 +1059,287 @@ std::vector<std::uint16_t> GameState::get_legal_moves()
     //even though it is primarily designed to undo moves, the last element represents the current state
     UndoState undo = state_stack[state_stack.size() - 1];
 
+    std::vector<std::uint8_t> pieces;
+    pieces = serialize(bitboards[1 + color_shift]);
+    std::vector<std::uint8_t> attacks;
+    std::uint16_t move = 0;
 
-    for (int from_square = 0; from_square < 64; from_square++)
+    for (std::uint8_t p : pieces)
     {
-        if (!read(bitboards[6 + color_shift], from_square)) {
-            continue;
-        }
+        std::uint64_t rays = piece_attacks[0][p] & ~bitboards[6 + color_shift];
+        attacks = serialize(rays);
 
-
-        if (!read(bitboards[0 + color_shift], from_square))
+        for (std::uint8_t attack : attacks)
         {
-            std::uint8_t piece = 0;
-            for (int i = 1 + color_shift; i < 6 + color_shift; i++)
-            {
-                if (read(bitboards[i], from_square)) {
-                    piece = i;
-                    break;
-                }
+            move = (attack << 6) | p;
+            if (read(bitboards[13 - color_shift], attack)) {
+                move |= (1 << 14);
             }
 
-            //attack ray is used to find available moves
-            //however it includes moves in which a player would capture there own piece, which must be filtered out
-            std::vector<std::uint8_t> ray = get_attack_ray(piece_order[piece], from_square);
-
-            for (std::uint8_t target : ray)
-            {
-                if (read(bitboards[6 + color_shift], target)) {
-                    continue;
-                }
-
-                //move packing
-                std::uint16_t move = ((std::uint16_t)target << 6) | from_square;
-                if (read(bitboards[13 - color_shift], target)) {
-                    //set the capture flag
-                    set(&move, 14);
-                }
-
-                //last step in move validation is to determine if king would be vulnerable if the move were played
-                //since making and unmaking moves is already necessary it can be repurposed here
-
-                if (validate_move(move)) legal_moves.push_back(move);
+            if (validate_move(move)) {
+                legal_moves.push_back(move);
             }
         }
+    }
 
+    pieces = serialize(bitboards[2 + color_shift]);
+    for (std::uint8_t p : pieces)
+    {
+        std::uint64_t rays = piece_attacks[1][p];
+        rays = occlude_northeast(rays, bitboards[6] | bitboards[13], p);
+        rays = occlude_northwest(rays, bitboards[6] | bitboards[13], p);
+        rays = occlude_southeast(rays, bitboards[6] | bitboards[13], p);
+        rays = occlude_southwest(rays, bitboards[6] | bitboards[13], p);
+        rays &= ~bitboards[6 + color_shift];
 
+        attacks = serialize(rays);
 
-        //white pawn moves
-        if (white_to_move && read(bitboards[0], from_square)) 
+        for (std::uint8_t attack : attacks)
         {
-            //single pawn push
-            if (!read(bitboards[6], from_square - 8) && !read(bitboards[13], from_square - 8)) 
-            {
-                std::uint16_t move = ((from_square - 8) << 6) | from_square;
-                
-                //promotion handling
-                if ((from_square - 8) / 8 == 0)
+            move = (attack << 6) | p;
+            if (read(bitboards[13 - color_shift], attack)) {
+                move |= (1 << 14);
+            }
+
+            if (validate_move(move)) {
+                legal_moves.push_back(move);
+            }
+        }
+    }
+
+    pieces = serialize(bitboards[3 + color_shift]);
+    for (std::uint8_t p : pieces)
+    {
+        std::uint64_t rays = piece_attacks[2][p];
+        rays = occlude_north(rays, bitboards[6] | bitboards[13], p);
+        rays = occlude_west(rays, bitboards[6] | bitboards[13], p);
+        rays = occlude_east(rays, bitboards[6] | bitboards[13], p);
+        rays = occlude_south(rays, bitboards[6] | bitboards[13], p);
+        rays &= ~bitboards[6 + color_shift];
+
+        attacks = serialize(rays);
+
+        for (std::uint8_t attack : attacks)
+        {
+            move = (attack << 6) | p;
+            if (read(bitboards[13 - color_shift], attack)) {
+                move |= (1 << 14);
+            }
+
+            if (validate_move(move)) {
+                legal_moves.push_back(move);
+            }
+        }
+    }
+
+    pieces = serialize(bitboards[4 + color_shift]);
+    for (std::uint8_t p : pieces)
+    {
+        std::uint64_t rays = piece_attacks[3][p];
+        rays = occlude_northeast(rays, bitboards[6] | bitboards[13], p);
+        rays = occlude_northwest(rays, bitboards[6] | bitboards[13], p);
+        rays = occlude_southeast(rays, bitboards[6] | bitboards[13], p);
+        rays = occlude_southwest(rays, bitboards[6] | bitboards[13], p);
+        rays = occlude_north(rays, bitboards[6] | bitboards[13], p);
+        rays = occlude_west(rays, bitboards[6] | bitboards[13], p);
+        rays = occlude_east(rays, bitboards[6] | bitboards[13], p);
+        rays = occlude_south(rays, bitboards[6] | bitboards[13], p);
+        rays &= ~bitboards[6 + color_shift];
+
+        attacks = serialize(rays);
+
+        for (std::uint8_t attack : attacks)
+        {
+            move = (attack << 6) | p;
+            if (read(bitboards[13 - color_shift], attack)) {
+                move |= (1 << 14);
+            }
+
+            if (validate_move(move)) {
+                legal_moves.push_back(move);
+            }
+        }
+    }
+
+    pieces = serialize(bitboards[5 + color_shift]);
+
+    for (std::uint8_t p : pieces)
+    {
+        attacks = serialize(piece_attacks[4][p] & ~bitboards[6 + color_shift]);
+
+        for (std::uint8_t attack : attacks)
+        {
+            move = (attack << 6) | p;
+            if (read(bitboards[13 - color_shift], attack)) {
+                move |= (1 << 14);
+            }
+
+            if (validate_move(move)) {
+                legal_moves.push_back(move);
+            }
+        }
+    }
+    
+
+    pieces = serialize(bitboards[0 + color_shift]);
+    for (std::uint8_t p : pieces)
+    {
+        std::uint64_t rays = 0;
+        if (white_to_move)
+        {
+            if (!read(bitboards[6], p - 8) && !read(bitboards[13], p - 8)) {
+                move = ((p - 8) << 6) | p;
+                if (p > 15)
                 {
-                    for (int i = 8; i < 12; i++)
-                    {
-                        move |= (i << 12);
-                        if (validate_move(move)) legal_moves.push_back(move);
-                        move &= 4095;
+                    if (validate_move(move)) {
+                        legal_moves.push_back(move);
                     }
                 }
                 else
                 {
-                    if (validate_move(move)) legal_moves.push_back(move);
-                }
-            }
-
-
-            //double pawn push
-            if (from_square / 8 == 6)
-            {
-                if (!read(bitboards[6], from_square - 8) && !read(bitboards[13], from_square - 8) 
-                && !read(bitboards[6], from_square - 16) && !read(bitboards[13], from_square - 16))
-                {
-                    std::uint16_t move = ((from_square - 16) << 6) | from_square;
-                    set(&move, 12);
-                    if (validate_move(move)) legal_moves.push_back(move);
-                }
-            }
-
-
-            //diagonal attacks
-            if (from_square % 8 != 0) 
-            {
-                if (read(bitboards[13], from_square - 9))
-                {
-                    std::uint16_t move = ((from_square - 9) << 6) | from_square;
-                
-                    //promotion handling
-                    if ((from_square - 9) / 8 == 0)
-                    {
-                        for (int i = 12; i < 16; i++)
-                        {
-                            move |= (i << 12);
-                            if (validate_move(move)) legal_moves.push_back(move);
-                            move &= 4095;
-                        }
-                    }
-                    else
-                    {
-                        set(&move, 14);
-                        if (validate_move(move)) legal_moves.push_back(move);
-                    }
-                }
-
-
-                //en passant handling
-                if (from_square - 9 == undo.en_passant_square && from_square / 8 == 3)
-                {
-                    std::uint16_t move = ((from_square - 9) << 6) | from_square;
-                    set(&move, 14);
-                    set(&move, 12);
-                    if (validate_move(move)) legal_moves.push_back(move);
-                }
-            }
-
-
-            //diagonal attacks
-            if (from_square % 8 != 7) 
-            {
-                if (read(bitboards[13], from_square - 7))
-                {
-                    std::uint16_t move = ((from_square - 7) << 6) | from_square;
-                
-                    //promotion handling
-                    if ((from_square - 7) / 8 == 0)
-                    {
-                        for (int i = 12; i < 16; i++)
-                        {
-                            move |= (i << 12);
-                            if (validate_move(move)) legal_moves.push_back(move);
-                            move &= 4095;
-                        }
-                    }
-                    else
-                    {
-                        set(&move, 14);
-                        if (validate_move(move)) legal_moves.push_back(move);
-                    }
-                }
-
-
-                //en passant handling
-                if (from_square - 7 == undo.en_passant_square && from_square / 8 == 3)
-                {
-                    std::uint16_t move = ((from_square - 7) << 6) | from_square;
-                    set(&move, 14);
-                    set(&move, 12);
-                    if (validate_move(move)) legal_moves.push_back(move);
-                }
-            }
-        }
-
-        
-        //black pawn moves
-        if (!white_to_move && read(bitboards[7], from_square))
-        {
-            //single pawn push
-            if (!read(bitboards[6], from_square + 8) && !read(bitboards[13], from_square + 8)) 
-            {
-                std::uint16_t move = ((from_square + 8) << 6) | from_square;
-                if ((from_square + 8) / 8 == 7)
-                {
-                    for (int i = 8; i < 12; i++)
+                    for (std::uint8_t i = 8; i < 12; i++)
                     {
                         move |= (i << 12);
-                        if (validate_move(move)) legal_moves.push_back(move);
-                        move &= 4095;
+                        if (validate_move(move)) {
+                            legal_moves.push_back(move);
+                        }
+                        move &= ((~0) >> 4);
+                    }
+                }
+
+                if (p / 8 == 6)
+                {
+                    if (!read(bitboards[6], p - 16) && !read(bitboards[13], p - 16))
+                    {
+                        move = ((p - 16) << 6) | p;
+                        move |= (1 << 12);
+                        if (validate_move(move)) {
+                            legal_moves.push_back(move);
+                        }
+                    }
+                }
+            }
+
+            rays |= ((((1ULL << p) >> 7) & ~Bitwise::AFILE) & bitboards[13]);
+            rays |= ((((1ULL << p) >> 9) & ~Bitwise::HFILE) & bitboards[13]);
+
+            attacks = serialize(rays);
+
+            for (std::uint8_t attack : attacks)
+            {
+                move = (attack << 6) | p;
+                if (p > 15)
+                {
+                    move |= (1 << 14);
+                    if (validate_move(move)) {
+                        legal_moves.push_back(move);
                     }
                 }
                 else
                 {
-                    if (validate_move(move)) legal_moves.push_back(move);
-                }
-            }
-
-
-            //double pawn push
-            if (from_square / 8 == 1)
-            {
-                if (!read(bitboards[6], from_square + 8) && !read(bitboards[13], from_square + 8) 
-                && !read(bitboards[6], from_square + 16) && !read(bitboards[13], from_square + 16))
-                {
-                    std::uint16_t move = ((from_square + 16) << 6) | from_square;
-                    set(&move, 12);
-                    if (validate_move(move)) legal_moves.push_back(move);
-                }
-            }
-
-            //diagonal attacks
-            if (from_square % 8 != 0) 
-            {
-                if (read(bitboards[6], from_square + 7))
-                {
-                    std::uint16_t move = ((from_square + 7) << 6) | from_square;
-                
-                    if ((from_square + 7) / 8 == 7)
+                    for (std::uint8_t i = 12; i < 16; i++)
                     {
-                        for (int i = 12; i < 16; i++)
-                        {
-                            move |= (i << 12);
-                            if (validate_move(move)) legal_moves.push_back(move);
-                            move &= 4095;
+                        move |= (i << 12);
+                        if (validate_move(move)) {
+                            legal_moves.push_back(move);
+                        }
+                        move &= ((~0) >> 4);
+                    }
+                }
+            }
+
+            rays |= (((1ULL << p) >> 7) & ~Bitwise::AFILE);
+            rays |= (((1ULL << p) >> 9) & ~Bitwise::HFILE);
+
+            if (read(rays, undo.en_passant_square))
+            {
+                move = (undo.en_passant_square << 6) | p;
+                move |= (5 << 12);
+                if (validate_move(move)) {
+                    legal_moves.push_back(move);
+                }
+            }
+
+        }
+        else
+        {
+            if (!read(bitboards[6], p + 8) && !read(bitboards[13], p + 8)) {
+                move = ((p + 8) << 6) | p;
+                if (p < 48)
+                {
+                    if (validate_move(move)) {
+                        legal_moves.push_back(move);
+                    }
+                }
+                else
+                {
+                    for (std::uint8_t i = 8; i < 12; i++)
+                    {
+                        move |= (i << 12);
+                        if (validate_move(move)) {
+                            legal_moves.push_back(move);
+                        }
+                        move &= ((~0) >> 4);
+                    }
+                }
+
+                if (p / 8 == 1)
+                {
+                    if (!read(bitboards[6], p + 16) && !read(bitboards[13], p + 16))
+                    {
+                        move = ((p + 16) << 6) | p;
+                        move |= (1 << 12);
+                        if (validate_move(move)) {
+                            legal_moves.push_back(move);
                         }
                     }
-                    else
-                    {
-                        set(&move, 14);
-                        if (validate_move(move)) legal_moves.push_back(move);
-                    }
                 }
-
-
-                //en passant
-                if (from_square + 7 == undo.en_passant_square && from_square / 8 == 4)
-                {
-                    std::uint16_t move = ((from_square + 7) << 6) | from_square;
-                    set(&move, 14);
-                    set(&move, 12);
-                    if (validate_move(move)) legal_moves.push_back(move);
-                }
-                
             }
 
-            //diagonal attacks
-            if (from_square % 8 != 7) 
+            rays |= ((((1ULL << p) << 7) & ~Bitwise::HFILE) & bitboards[6]);
+            rays |= ((((1ULL << p) << 9) & ~Bitwise::AFILE) & bitboards[6]);
+
+            attacks = serialize(rays);
+
+            for (std::uint8_t attack : attacks)
             {
-                if (read(bitboards[6], from_square + 9))
+                move = (attack << 6) | p;
+                if (p < 48)
                 {
-                    std::uint16_t move = ((from_square + 9) << 6) | from_square;
-                
-                    if ((from_square + 9) / 8 == 7)
-                    {
-                        for (int i = 12; i < 16; i++)
-                        {
-                            move |= (i << 12);
-                            if (validate_move(move)) legal_moves.push_back(move);
-                            move &= 4095;
-                        }
-                    }
-                    else
-                    {
-                        set(&move, 14);
-                        if (validate_move(move)) legal_moves.push_back(move);
+                    move |= (1 << 14);
+                    if (validate_move(move)) {
+                        legal_moves.push_back(move);
                     }
                 }
-
-
-                //en passant
-                if (from_square + 9 == undo.en_passant_square && from_square / 8 == 4)
+                else
                 {
-                    std::uint16_t move = ((from_square + 9) << 6) | from_square;
-                    set(&move, 14);
-                    set(&move, 12);
-                    if (validate_move(move)) legal_moves.push_back(move);
+                    for (std::uint8_t i = 12; i < 16; i++)
+                    {
+                        move |= (i << 12);
+                        if (validate_move(move)) {
+                            legal_moves.push_back(move);
+                        }
+                        move &= ((~0) >> 4);
+                    }
+                }
+            }
+
+            rays |= (((1ULL << p) << 7) & ~Bitwise::HFILE);
+            rays |= (((1ULL << p) << 9) & ~Bitwise::AFILE);
+
+            if (read(rays, undo.en_passant_square))
+            {
+                move = (undo.en_passant_square << 6) | p;
+                move |= (5 << 12);
+                if (validate_move(move)) {
+                    legal_moves.push_back(move);
                 }
             }
         }
     }
+
+
+    
 
     
     std::uint8_t castling = 0;
@@ -1394,6 +1425,8 @@ bool GameState::kingside_eligibility()
         set(&bitboards[5 + color_shift], i);
 
         if (in_check(white_to_move)) {
+            clear(&bitboards[5 + color_shift], i);
+            set(&bitboards[5 + color_shift], 4 + castle_shift);
             return false;
         }
 
@@ -1449,6 +1482,8 @@ bool GameState::queenside_eligibility()
         set(&bitboards[5 + color_shift], i);
 
         if (in_check(white_to_move)) {
+            clear(&bitboards[5 + color_shift], i);
+            set(&bitboards[5 + color_shift], 4 + castle_shift);
             return false;
         }
 

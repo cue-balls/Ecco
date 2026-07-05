@@ -141,6 +141,7 @@ black_button.addEventListener('click', async () => {
 
     if (turn == "white")
     {
+      await delay(500);
       playEngineMove();
       await delay(500);
       board.position(chess.fen());
