@@ -26,97 +26,6 @@
 #include "bitwise.h"
 
 
-    
-//default constructor
-//initializes to starting position
-GameState::GameState() : bitboards(14), state_stack(), white_to_move(true) {
-    
-    //pieces is used to construct the bitboards
-    //must be reset to 0 each time
-
-    std::uint64_t pieces = 0;
-    
-    for (int i = 48; i < 56; i++) {
-        set(&pieces, i);
-    }
-
-    bitboards[0] = pieces;
-
-    pieces = 0;
-    set(&pieces, 56);
-    set(&pieces, 63);
-    bitboards[3] = pieces;
-
-    pieces = 0;
-    set(&pieces, 57);
-    set(&pieces, 62);
-    bitboards[1] = pieces;
-
-    pieces = 0;
-    set(&pieces, 58);
-    set(&pieces, 61);
-    bitboards[2] = pieces;
-
-    pieces = 0;
-    set(&pieces, 59);
-    bitboards[4] = pieces;
-
-    pieces = 0;
-    set(&pieces, 60);
-    bitboards[5] = pieces;
-
-    pieces = 0;
-    for (int i = 48; i < 64; i++) {
-        set(&pieces, i);
-    }
-
-    bitboards[6] = pieces;
-
-        
-    pieces = 0;
-    for (int i = 8; i < 16; i++) {
-        set(&pieces, i);
-    }
-
-    bitboards[7] = pieces;
-
-    pieces = 0;
-    set(&pieces, 0);
-    set(&pieces, 7);
-    bitboards[10] = pieces;
-
-    pieces = 0;
-    set(&pieces, 1);
-    set(&pieces, 6);
-    bitboards[8] = pieces;
-
-    pieces = 0;
-    set(&pieces, 2);
-    set(&pieces, 5);
-    bitboards[9] = pieces;
-
-    pieces = 0;
-    set(&pieces, 3);
-    bitboards[11] = pieces;
-
-    pieces = 0;
-    set(&pieces, 4);
-    bitboards[12] = pieces;
-
-    pieces = 0;
-    for (int i = 0; i < 16; i++) {
-        set(&pieces, i);
-    }
-
-    bitboards[13] = pieces;
-
-    UndoState current_state {};
-    current_state.captured_piece = '-';
-    current_state.en_passant_square = 255;
-    current_state.castling_rights = 15;
-
-    state_stack.push_back(current_state);
-}
 
 
 //arg constructor
@@ -128,6 +37,10 @@ GameState::GameState(std::string FEN) : bitboards(14), white_to_move(true) {
     int i;
     for (i = 0; i < 14; i++) {
         bitboards[i] = 0;
+    }
+
+    for (int i = 0; i < 64; i++) {
+        mailbox.push_back(255);
     }
 
     //board setup
@@ -150,14 +63,15 @@ GameState::GameState(std::string FEN) : bitboards(14), white_to_move(true) {
             {
                 if (piece_order[j] == c)
                 {
-                    set(&bitboards[j], square);
+                    bitboards[j] = set(bitboards[j], square);
+                    mailbox[square] = j;
                     if (std::isupper(c))
                     {
-                        set(&bitboards[6], square);
+                        bitboards[6] = set(bitboards[6], square);
                     }
                     else
                     {
-                        set(&bitboards[13], square);
+                        bitboards[13] = set(bitboards[13], square);
                     }
                 }
             }
@@ -185,7 +99,7 @@ GameState::GameState(std::string FEN) : bitboards(14), white_to_move(true) {
     //every time the algorithm moves down through the tree a state is pushed and every time it moves up a state is popped
     //last state always represents the position currently being analyzed
     UndoState current_state {};
-    current_state.captured_piece = '-';
+    current_state.captured_piece = 255;
 
     i += 2;
     std::uint8_t castling = 0;
@@ -202,10 +116,10 @@ GameState::GameState(std::string FEN) : bitboards(14), white_to_move(true) {
     {
         char c = FEN[i];
         switch (c) {
-            case 'K': set(&castling, 0); break;
-            case 'Q': set(&castling, 1); break;
-            case 'k': set(&castling, 2); break;
-            case 'q': set(&castling, 3); break;
+            case 'K': castling = set(castling, 0); break;
+            case 'Q': castling = set(castling, 1); break;
+            case 'k': castling = set(castling, 2); break;
+            case 'q': castling = set(castling, 3); break;
         }
 
         i++;
@@ -231,28 +145,6 @@ GameState::GameState(std::string FEN) : bitboards(14), white_to_move(true) {
 
 
 
-
-
-
-//determines what piece if any is on a given square
-char GameState::square_occupancy(std::uint8_t square)
-{
-    for (int i = 0; i < 14; i++)
-    {
-        if (i == 6 || i == 13) {
-            continue;
-        }
-
-        std::uint64_t board = bitboards[i];
-
-        if (read(board, square)) {
-            return piece_order[i];
-        }
-    }
-
-
-    return '-';
-}
 
 
 
@@ -295,149 +187,122 @@ void GameState::make_move(std::uint16_t move)
 
     //en passant eligibility only lasts for 1 turn and therefore must be reset each move
     std::uint8_t en_passant = 255;
-    std::uint8_t capture = 255;
+    std::uint8_t capture = mailbox[target_square];
+    std::uint8_t moving_piece = mailbox[from_square];
 
-    //this loop searches for piece on from square and moves it to target square
-    for (int board = 0; board < 14; board++)
-    {
-        if (board == 6 || board == 13) {
-            continue;
-        }
-
-        if (read(bitboards[board], from_square))
-        {
-            //moving piece
-            set(&bitboards[board], target_square);
-            clear(&bitboards[board], from_square);
-            
-            if (board < 6) //white piece
-            {
-                //changing composite board
-                clear(&bitboards[6], from_square);
-                set(&bitboards[6], target_square);
-            }
-            else //black piece
-            {
-                //changing composite board
-                clear(&bitboards[13], from_square);
-                set(&bitboards[13], target_square);
-            }
-
-
-            //all capture moves by design have the second bit from left set to 1
-            //if there is no capture, no further looping is required
-            if (!read(special_move_data, 2)) 
-            {
-                break;
-            }
-        }
-        else if (read(bitboards[board], target_square))
-        {
-            //handling captured piece
-            clear(&bitboards[board], target_square);
-            if (board < 6)
-            {
-                clear(&bitboards[6], target_square);
-            }
-            else
-            {
-                clear(&bitboards[13], target_square);
-            }
-            
-            
-            capture = board;
-        }
+    //color shift is used to differentiate between active and inactive player
+    //bitboards[x + color_shift] represents piece x of the active player
+    int color_shift = 0;
+    if (moving_piece > 6) {
+        color_shift = 7;
     }
+
+
+    bitboards[moving_piece] ^= ((1ULL << target_square) | (1ULL << from_square));
+    mailbox[target_square] = moving_piece;
+    mailbox[from_square] = 255;
+
+    if (read(special_move_data, 2) && special_move_data != 5)
+    {
+        bitboards[capture] = clear(bitboards[capture], target_square);
+        bitboards[13 - color_shift] = clear(bitboards[13 - color_shift], target_square);
+    }
+
+    bitboards[6 + color_shift] ^= ((1ULL << from_square) | (1ULL << target_square));
+    
+
     
 
     //determining changes to castling rights
     if (castling != 0)
     {
         switch (from_square) {
-        case 0: clear(&castling, 3); break;
-        case 7: clear(&castling, 2); break;
-        case 56: clear(&castling, 1); break;
-        case 63: clear(&castling, 0); break;
+        case 0: castling = clear(castling, 3); break;
+        case 7: castling = clear(castling, 2); break;
+        case 56: castling = clear(castling, 1); break;
+        case 63: castling = clear(castling, 0); break;
 
         case 4:
-            clear(&castling, 3);
-            clear(&castling, 2);
+            castling = clear(castling, 3);
+            castling = clear(castling, 2);
             break;
         
         case 60:
-            clear(&castling, 1);
-            clear(&castling, 0);
+            castling = clear(castling, 1);
+            castling = clear(castling, 0);
             break;
         }
     }
     
 
-    //setting en passant flag
-    if (special_move_data == 1) {
-        en_passant = (target_square + from_square) / 2;
+    if (special_move_data == 0) {
+        undo.captured_piece = capture;
+        undo.castling_rights = castling;
+        undo.en_passant_square = en_passant;
+        state_stack.push_back(undo);
+        white_to_move = !white_to_move;
+        return;
     }
 
 
-    //in the event of a castle, the from square and target square represent the king's movement
-    //therefore the only concern is moving the rook and removing all castling rights from the active player
-    if (special_move_data == 2) 
+    
+
+    //setting en passant flag
+    if (special_move_data == 1) 
     {
+        en_passant = (target_square + from_square) / 2;
+    }
+    else if (special_move_data == 2) 
+    {
+        //in the event of a castle, the from square and target square represent the king's movement
+        //therefore the only concern is moving the rook and removing all castling rights from the active player
         if (target_square == 62) //white
         {
-            clear(&bitboards[3], 63);
-            clear(&bitboards[6], 63);
-            set(&bitboards[3], 61);
-            set(&bitboards[6], 61);
-            clear(&castling, 0);
-            clear(&castling, 1);
+            bitboards[3] ^= ((1ULL << 63) | (1ULL << 61));
+            bitboards[6] ^= ((1ULL << 63) || (1ULL << 61));
+            mailbox[63] = 255;
+            mailbox[61] = 3;
         }
         else if (target_square == 6) //black
         {
-            clear(&bitboards[10], 7);
-            clear(&bitboards[13], 7);
-            set(&bitboards[10], 5);
-            set(&bitboards[13], 5);
-            clear(&castling, 2);
-            clear(&castling, 3);
+            bitboards[10] ^= ((1ULL << 7) | (1ULL << 5));
+            bitboards[13] ^= ((1ULL << 7) | (1ULL << 5));
+            mailbox[7] = 255;
+            mailbox[5] = 10;
         }
     }
-
-    if (special_move_data == 3)
+    else if (special_move_data == 3)
     {
         if (target_square == 58) //white
         {
-            clear(&bitboards[3], 56);
-            clear(&bitboards[6], 56);
-            set(&bitboards[3], 59);
-            set(&bitboards[6], 59);
-            clear(&castling, 0);
-            clear(&castling, 1);
+            bitboards[3] ^= ((1ULL << 56) | (1ULL << 59));
+            bitboards[6] ^= ((1ULL << 56) | (1ULL << 59));
+            mailbox[56] = 255;
+            mailbox[59] = 3;
         }
         else if (target_square == 2) //black
         {
-            clear(&bitboards[10], 0);
-            clear(&bitboards[13], 0);
-            set(&bitboards[10], 3);
-            set(&bitboards[13], 3);
-            clear(&castling, 2);
-            clear(&castling, 3);
+            bitboards[10] ^= ((1ULL) | (1ULL << 3));
+            bitboards[13] ^= ((1ULL) | (1ULL << 3));
+            mailbox[0] = 255;
+            mailbox[3] = 10;
         }
     }
-
-
     //en passant capture
-    if (special_move_data == 5) 
+    else if (special_move_data == 5) 
     {
         if (target_square / 8 == 2)
         {
-            clear(&bitboards[7], target_square + 8);
-            clear(&bitboards[13], target_square + 8);
+            bitboards[7] = clear(bitboards[7], target_square + 8);
+            bitboards[13] = clear(bitboards[13], target_square + 8);
+            mailbox[target_square + 8] = 255;
             capture = 7;
         }
         else if (target_square / 8 == 5)
         {
-            clear(&bitboards[0], target_square - 8);
-            clear(&bitboards[6], target_square - 8);
+            bitboards[0] = clear(bitboards[0], target_square - 8);
+            bitboards[6] = clear(bitboards[6], target_square - 8);
+            mailbox[target_square - 8] = 255;
             capture = 0;
         }
     }
@@ -449,41 +314,38 @@ void GameState::make_move(std::uint16_t move)
     //this block handles promotion moves
     if (read(special_move_data, 3))
     {
-        //color shift is used to differentiate between active and inactive player
-        //bitboards[x + color_shift] represents piece x of the active player
-        int color_shift = 0;
-        if (target_square >= 56) {
-            color_shift = 7;
-        }
-
         switch (special_move_data) {
             
             //knight promotion
             case 8:
             case 12:
-                clear(&bitboards[0 + color_shift], target_square);
-                set(&bitboards[1 + color_shift], target_square);
+                bitboards[0 + color_shift] = clear(bitboards[0 + color_shift], target_square);
+                bitboards[1 + color_shift] = set(bitboards[1 + color_shift], target_square);
+                mailbox[target_square] = 1 + color_shift;
                 break;
             
             //bishop promotion
             case 9:
             case 13:
-                clear(&bitboards[0 + color_shift], target_square);
-                set(&bitboards[2 + color_shift], target_square);
+                bitboards[0 + color_shift] = clear(bitboards[0 + color_shift], target_square);
+                bitboards[2 + color_shift] = set(bitboards[2 + color_shift], target_square);
+                mailbox[target_square] = 2 + color_shift;
                 break;
             
             //rook promotion
             case 10:
             case 14:
-                clear(&bitboards[0 + color_shift], target_square);
-                set(&bitboards[3 + color_shift], target_square);
+                bitboards[0 + color_shift] = clear(bitboards[0 + color_shift], target_square);
+                bitboards[3 + color_shift] = set(bitboards[3 + color_shift], target_square);
+                mailbox[target_square] = 3 + color_shift;
                 break;
             
             //queen promotion
             case 11:
             case 15:
-                clear(&bitboards[0 + color_shift], target_square);
-                set(&bitboards[4 + color_shift], target_square);
+                bitboards[0 + color_shift] = clear(bitboards[0 + color_shift], target_square);
+                bitboards[4 + color_shift] = set(bitboards[4 + color_shift], target_square);
+                mailbox[target_square] = 4 + color_shift;
                 break;
         }
     }
@@ -513,139 +375,120 @@ void GameState::unmake_move(std::uint16_t move)
     std::uint8_t target_square = (move >> 6) & 63;
     std::uint8_t special_move_data = (move >> 12) & 15;
     std::uint8_t capture = undo.captured_piece;
+    std::uint8_t moving_piece = mailbox[target_square];
 
-    
-
-    int board;
-    for (board = 0; board < 14; board++)
-    {
-        if (board == 6 || board == 13) {
-            continue;
-        }
-
-        if (read(bitboards[board], target_square))
-        {
-            clear(&bitboards[board], target_square);
-            set(&bitboards[board], from_square);
-            
-            //updating composite
-            if (board < 6) 
-            {
-                clear(&bitboards[6], target_square);
-                set(&bitboards[6], from_square);
-            }
-            else
-            {
-                clear(&bitboards[13], target_square);
-                set(&bitboards[13], from_square);
-            }
-
-            break;
-        }
-    }
-
-
-    //putting rooks back if move is a castle
-    if (special_move_data == 2)
-    {
-        if (board < 6)
-        {
-            clear(&bitboards[3], 61);
-            clear(&bitboards[6], 61);
-            set(&bitboards[3], 63);
-            set(&bitboards[6], 63);
-        }
-        else
-        {
-            clear(&bitboards[10], 5);
-            clear(&bitboards[13], 5);
-            set(&bitboards[10], 7);
-            set(&bitboards[13], 7);
-        }
-    }
-
-    if (special_move_data == 3)
-    {
-        if (board < 6)
-        {
-            clear(&bitboards[3], 59);
-            clear(&bitboards[6], 59);
-            set(&bitboards[3], 56);
-            set(&bitboards[6], 56);
-        }
-        else
-        {
-            clear(&bitboards[10], 3);
-            clear(&bitboards[13], 3);
-            set(&bitboards[10], 0);
-            set(&bitboards[13], 0);
-        }
-    }
-
-
-    
     std::uint8_t color_shift = 0;
-    if (board > 6) {
+    if (moving_piece > 6) {
         color_shift = 7;
     }
+    
+
+    bitboards[moving_piece] ^= ((1ULL << from_square) | (1ULL << target_square));
+    mailbox[from_square] = moving_piece;
+    mailbox[target_square] = 255;
+
+    bitboards[6 + color_shift] = clear(bitboards[6 + color_shift], target_square);
+    bitboards[6 + color_shift] = set(bitboards[6 + color_shift], from_square);
 
 
-    //undoing promotion
-    if (read(special_move_data, 3))
+
+
+    if (special_move_data < 2) {
+        white_to_move = !white_to_move;
+        return;
+    }
+    else if (read(special_move_data, 2) && special_move_data != 5) 
+    {
+        bitboards[capture] = set(bitboards[capture], target_square);
+        bitboards[13 - color_shift] = set(bitboards[13 - color_shift], target_square);
+        mailbox[target_square] = capture;
+    }
+    else if (special_move_data == 2) //putting rooks back if move is a castle
+    {
+        if (moving_piece < 6)
+        {
+            bitboards[3] ^= ((1ULL << 61) | (1ULL << 63));
+            bitboards[6] ^= ((1ULL << 61) | (1ULL << 63));
+            mailbox[61] = 255;
+            mailbox[63] = 3;
+        }
+        else
+        {
+            bitboards[10] ^= ((1ULL << 5) | (1ULL << 7));
+            bitboards[13] ^= ((1ULL << 5) | (1ULL << 7));
+            mailbox[5] = 255;
+            mailbox[7] = 10;
+        }
+    }
+    else if (special_move_data == 3)
+    {
+        if (moving_piece < 6)
+        {
+            bitboards[3] ^= ((1ULL << 59) | (1ULL << 56));
+            bitboards[6] ^= ((1ULL << 59) | (1ULL << 56));
+            mailbox[59] = 255;
+            mailbox[56] = 3;
+        }
+        else
+        {
+            bitboards[10] ^= ((1ULL) | (1ULL << 3));
+            bitboards[13] ^= ((1ULL) | (1ULL << 3));
+            mailbox[3] = 255;
+            mailbox[0] = 10;
+        }
+    }
+    else if (special_move_data == 5) //undoing en passant
+    {
+        if (moving_piece < 6)
+        {
+            bitboards[7] = set(bitboards[7], target_square + 8);
+            bitboards[13] = set(bitboards[13], target_square + 8);
+            mailbox[target_square + 8] = 7;
+        }
+        else
+        {
+            bitboards[0] = set(bitboards[0], target_square - 8);
+            bitboards[6] = set(bitboards[6], target_square - 8);
+            mailbox[target_square - 8] = 0;
+        }
+    }
+    
+    
+    
+    
+    
+    if (read(special_move_data, 3)) //undoing promotion
     {
         switch (special_move_data) {
             case 8:
             case 12:
-                set(&bitboards[0 + color_shift], from_square);
-                clear(&bitboards[1 + color_shift], from_square);
+                bitboards[0 + color_shift] = set(bitboards[0 + color_shift], from_square);
+                bitboards[1 + color_shift] = clear(bitboards[1 + color_shift], from_square);
+                mailbox[from_square] = color_shift;
                 break;
             case 9:
             case 13:
-                set(&bitboards[0 + color_shift], from_square);
-                clear(&bitboards[2 + color_shift], from_square);
+                bitboards[0 + color_shift] = set(bitboards[0 + color_shift], from_square);
+                bitboards[2 + color_shift] = clear(bitboards[2 + color_shift], from_square);
+                mailbox[from_square] = color_shift;
                 break;
             case 10:
             case 14:
-                set(&bitboards[0 + color_shift], from_square);
-                clear(&bitboards[3 + color_shift], from_square);
+                bitboards[0 + color_shift] = set(bitboards[0 + color_shift], from_square);
+                bitboards[3 + color_shift] = clear(bitboards[3 + color_shift], from_square);
+                mailbox[from_square] = color_shift;
                 break;
             case 11:
             case 15:
-                set(&bitboards[0 + color_shift], from_square);
-                clear(&bitboards[4 + color_shift], from_square);
+                bitboards[0 + color_shift] = set(bitboards[0 + color_shift], from_square);
+                bitboards[4 + color_shift] = clear(bitboards[4 + color_shift], from_square);
+                mailbox[from_square] = color_shift;
                 break;
         }
     }
 
-    //handling non en passant captures
-    if (read(special_move_data, 2) && special_move_data != 5)
-    {
-        set(&bitboards[capture], target_square);
 
-        if (capture < 6)
-        {
-            set(&bitboards[6], target_square);
-        }
-        else
-        {
-            set(&bitboards[13], target_square);
-        }
-    }
-
-    //undoing en passant capture
-    if (special_move_data == 5)
-    {
-        if (board < 6)
-        {
-            set(&bitboards[7], target_square + 8);
-            set(&bitboards[13], target_square + 8);
-        }
-        else
-        {
-            set(&bitboards[0], target_square - 8);
-            set(&bitboards[6], target_square - 8);
-        }
-    }
+    
 
     white_to_move = !white_to_move;
 }
@@ -686,7 +529,7 @@ void GameState::populate_attacks()
                     rays |= fill_southeast(1ULL << square);
                     rays |= fill_northeast(1ULL << square);
                     rays |= fill_southwest(1ULL << square);
-                    clear(&rays, square);
+                    rays = clear(rays, square);
                     piece_attacks[p][square] = rays;
                     break;
                 case 2:
@@ -695,7 +538,7 @@ void GameState::populate_attacks()
                     rays |= fill_south(1ULL << square);
                     rays |= fill_east(1ULL << square);
                     rays |= fill_west(1ULL << square);
-                    clear(&rays, square);
+                    rays = clear(rays, square);
                     piece_attacks[p][square] = rays;
                     break;
                 case 3:
@@ -708,7 +551,7 @@ void GameState::populate_attacks()
                     rays |= fill_southeast(1ULL << square);
                     rays |= fill_northeast(1ULL << square);
                     rays |= fill_southwest(1ULL << square);
-                    clear(&rays, square);
+                    rays = clear(rays, square);
                     piece_attacks[p][square] = rays;
                     break;
                 case 4:
@@ -733,216 +576,6 @@ void GameState::populate_attacks()
 
 
 
-//takes an input piece and generates all squares it exerts pressure on
-//includes all squares that can be moved to and all same color pieces it is defending
-//pawn moves are more complicated and are calculated separately
-std::vector<std::uint8_t> GameState::get_attack_ray(char attacking_piece, std::uint8_t origin)
-{
-    std::vector<std::uint8_t> ray;
-
-    //mod and floor division operators are routinely used to get rank/file info
-    //this is useful when a piece being on the edge of the board would affect its movement
-
-
-    if (attacking_piece == 'N' || attacking_piece == 'n')
-    {
-        //knight moves can be calculated by shifting the square the knight is on by a value
-        //knight shift values are 6, 10, 15, 17, -6, -10, -15, -17
-        //however we must check to make sure the knight is not on the edge of the board to verify each shift
-
-        if (origin > 15)
-        {
-            if (origin % 8 != 0) {
-                ray.push_back(origin - 17);
-            }
-
-            if (origin % 8 != 7) {
-                ray.push_back(origin - 15);
-            }
-        }
-
-        if (origin < 48)
-        {
-            if (origin % 8 != 0) {
-                ray.push_back(origin + 15);
-            }
-
-            if (origin % 8 != 7) {
-                ray.push_back(origin + 17);
-            }
-        }
-
-        if (origin > 7)
-        {
-            if (origin % 8 > 1) {
-                ray.push_back(origin - 10);
-            }
-
-            if (origin % 8 < 6) {
-                ray.push_back(origin - 6);
-            }
-        }
-
-        if (origin < 56)
-        {
-            if (origin % 8 > 1) {
-                ray.push_back(origin + 6);
-            }
-
-            if (origin % 8 < 6) {
-                ray.push_back(origin + 10);
-            }
-        }
-    }
-    else if (attacking_piece == 'B' || attacking_piece == 'b')
-    {
-        //diagonals are always shifts of 7 or 9
-        //edge detection must be done
-
-
-        std::uint8_t attacking_square = origin;
-
-        while (attacking_square > 7 && attacking_square % 8 != 0)
-        {
-            attacking_square -= 9;
-            ray.push_back(attacking_square);
-            
-
-            //if there is a piece in the way the diagonal stops being calculated
-            if (read(bitboards[6], attacking_square) || read(bitboards[13], attacking_square)) {
-                break;
-            }
-        }
-
-        
-        
-        attacking_square = origin;
-        while (attacking_square > 7 && attacking_square % 8 != 7)
-        {
-            attacking_square -= 7;
-            ray.push_back(attacking_square);
-            
-            if (read(bitboards[6], attacking_square) || read(bitboards[13], attacking_square)) {
-                break;
-            }
-        }
-
-        
-        
-        attacking_square = origin;
-        while (attacking_square < 56 && attacking_square % 8 != 0)
-        {
-            attacking_square += 7;
-            ray.push_back(attacking_square);
-            
-            if (read(bitboards[6], attacking_square) || read(bitboards[13], attacking_square)) {
-                break;
-            }
-        }
-
-        
-        
-        attacking_square = origin;
-        while (attacking_square < 56 && attacking_square % 8 != 7)
-        {
-            attacking_square += 9;
-            ray.push_back(attacking_square);
-            
-            if (read(bitboards[6], attacking_square) || read(bitboards[13], attacking_square)) {
-                break;
-            }
-        }
-    }
-    else if (attacking_piece == 'R' || attacking_piece == 'r')
-    {
-        std::uint8_t attacking_square = origin;
-
-        while (attacking_square % 8 != 0) //file shift
-        {
-            attacking_square--;
-            ray.push_back(attacking_square);
-            
-            if (read(bitboards[6], attacking_square) || read(bitboards[13], attacking_square)) {
-                break;
-            }
-        }
-
-
-
-        attacking_square = origin;
-        while (attacking_square % 8 != 7) //file shift
-        {
-            attacking_square++;
-            ray.push_back(attacking_square);
-            
-            if (read(bitboards[6], attacking_square) || read(bitboards[13], attacking_square)) {
-                break;
-            }
-        }
-
-
-
-        attacking_square = origin;
-        while (attacking_square > 7) //rank shift
-        {
-            attacking_square -= 8;
-            ray.push_back(attacking_square);
-            
-            if (read(bitboards[6], attacking_square) || read(bitboards[13], attacking_square)) {
-                break;
-            }
-        }
-
-        
-        
-        attacking_square = origin;
-        while (attacking_square < 56) //rank shift
-        {
-            attacking_square += 8;
-            ray.push_back(attacking_square);
-            
-            if (read(bitboards[6], attacking_square) || read(bitboards[13], attacking_square)) {
-                break;
-            }
-        }
-    }
-    else if (attacking_piece == 'Q' || attacking_piece == 'q')
-    {
-        //queen rays are recursive combinations of bishop and rook rays
-
-        std::vector<std::uint8_t> diagonal = get_attack_ray(piece_order[2], origin);
-        std::vector<std::uint8_t> orthogonal = get_attack_ray(piece_order[3], origin);
-        diagonal.reserve(diagonal.size() + orthogonal.size());
-        diagonal.insert(diagonal.end(), orthogonal.begin(), orthogonal.end());
-
-        return diagonal;
-    }
-    else if (attacking_piece == 'K' || attacking_piece == 'k')
-    {
-        if (origin > 7)
-        {
-            ray.push_back(origin - 8);
-            if (origin % 8 != 0) ray.push_back(origin - 9);
-            if (origin % 8 != 7) ray.push_back(origin - 7);
-        }
-
-        if (origin < 56)
-        {
-            ray.push_back(origin + 8);
-            if (origin % 8 != 0) ray.push_back(origin + 7);
-            if (origin % 8 != 7) ray.push_back(origin + 9);
-        }
-
-        if (origin % 8 != 0) ray.push_back(origin - 1);
-        if (origin % 8 != 7) ray.push_back(origin + 1);
-    }
-
-
-    return ray;
-}
-
-
-
 
 
 
@@ -960,13 +593,9 @@ bool GameState::in_check(bool white)
 
 
     //searching for knight checks
-    std::uint64_t ray = piece_attacks[0][king_square] & bitboards[13 - color_shift];
-    std::vector<std::uint8_t> attacks = serialize(ray);
-    for (std::uint8_t square : attacks)
-    {
-        if (read(bitboards[8 - color_shift], square)) {
-            return true;
-        }
+    std::uint64_t ray = piece_attacks[0][king_square] & bitboards[8 - color_shift];
+    if (ray) {
+        return true;
     }
 
     ray = piece_attacks[1][king_square];
@@ -974,14 +603,10 @@ bool GameState::in_check(bool white)
     ray = occlude_northwest(ray, bitboards[6] | bitboards[13], king_square);
     ray = occlude_southeast(ray, bitboards[6] | bitboards[13], king_square);
     ray = occlude_southwest(ray, bitboards[6] | bitboards[13], king_square);
-    ray &= bitboards[13 - color_shift];
+    ray &= (bitboards[9 - color_shift] | bitboards[11 - color_shift]);
 
-    attacks = serialize(ray);
-    for (std::uint8_t square : attacks)
-    {
-        if (read(bitboards[9 - color_shift], square) || read(bitboards[11 - color_shift], square)) {
-            return true;
-        }
+    if (ray) {
+        return true;
     }
 
     ray = piece_attacks[2][king_square];
@@ -989,42 +614,27 @@ bool GameState::in_check(bool white)
     ray = occlude_east(ray, bitboards[6] | bitboards[13], king_square);
     ray = occlude_south(ray, bitboards[6] | bitboards[13], king_square);
     ray = occlude_west(ray, bitboards[6] | bitboards[13], king_square);
-    ray &= bitboards[13 - color_shift];
+    ray &= (bitboards[10 - color_shift] | bitboards[11 - color_shift]);
 
-    attacks = serialize(ray);
-    for (std::uint8_t square : attacks)
-    {
-        if (read(bitboards[10 - color_shift], square) || read(bitboards[11 - color_shift], square)) {
-            return true;
-        }
+    if (ray) {
+        return true;
     }
 
-    ray = piece_attacks[4][king_square] & bitboards[13 - color_shift];
-    attacks = serialize(ray);
-    for (std::uint8_t square : attacks)
-    {
-        if (read(bitboards[12 - color_shift], square)) {
-            return true;
-        }
+    
+    ray = piece_attacks[4][king_square] & bitboards[12 - color_shift];
+    if (ray) {
+        return true;
     }
 
     if (white)
     {
-        if (read((bitboards[7] << 7) & ~Bitwise::HFILE, king_square)) {
-            return true;
-        }
-
-        if (read((bitboards[7] << 9) & ~Bitwise::AFILE, king_square)) {
+        if (read((bitboards[7] << 7) & ~Bitwise::HFILE, king_square) || read((bitboards[7] << 9) & ~Bitwise::AFILE, king_square)) {
             return true;
         }
     }
     else
     {
-        if (read((bitboards[0] >> 7) & ~Bitwise::AFILE, king_square)) {
-            return true;
-        }
-
-        if (read((bitboards[0] >> 9) & ~Bitwise::HFILE, king_square)) {
+        if (read((bitboards[0] >> 7) & ~Bitwise::AFILE, king_square) || read((bitboards[0] >> 9) & ~Bitwise::HFILE, king_square)) {
             return true;
         }
     }
@@ -1220,8 +830,20 @@ std::vector<std::uint16_t> GameState::get_legal_moves()
                 }
             }
 
-            rays |= ((((1ULL << p) >> 7) & ~Bitwise::AFILE) & bitboards[13]);
-            rays |= ((((1ULL << p) >> 9) & ~Bitwise::HFILE) & bitboards[13]);
+            rays |= (((1ULL << p) >> 7) & ~Bitwise::AFILE);
+            rays |= (((1ULL << p) >> 9) & ~Bitwise::HFILE);
+
+            if (read(rays, undo.en_passant_square))
+            {
+                move = (undo.en_passant_square << 6) | p;
+                move |= (5 << 12);
+                if (validate_move(move)) {
+                    legal_moves.push_back(move);
+                }
+            }
+
+            rays &= bitboards[13];
+            rays &= bitboards[13];
 
             attacks = serialize(rays);
 
@@ -1247,19 +869,6 @@ std::vector<std::uint16_t> GameState::get_legal_moves()
                     }
                 }
             }
-
-            rays |= (((1ULL << p) >> 7) & ~Bitwise::AFILE);
-            rays |= (((1ULL << p) >> 9) & ~Bitwise::HFILE);
-
-            if (read(rays, undo.en_passant_square))
-            {
-                move = (undo.en_passant_square << 6) | p;
-                move |= (5 << 12);
-                if (validate_move(move)) {
-                    legal_moves.push_back(move);
-                }
-            }
-
         }
         else
         {
@@ -1296,8 +905,20 @@ std::vector<std::uint16_t> GameState::get_legal_moves()
                 }
             }
 
-            rays |= ((((1ULL << p) << 7) & ~Bitwise::HFILE) & bitboards[6]);
-            rays |= ((((1ULL << p) << 9) & ~Bitwise::AFILE) & bitboards[6]);
+            rays |= (((1ULL << p) << 7) & ~Bitwise::HFILE);
+            rays |= (((1ULL << p) << 9) & ~Bitwise::AFILE);
+
+            if (read(rays, undo.en_passant_square))
+            {
+                move = (undo.en_passant_square << 6) | p;
+                move |= (5 << 12);
+                if (validate_move(move)) {
+                    legal_moves.push_back(move);
+                }
+            }
+
+            rays &= bitboards[6];
+            rays &= bitboards[6];
 
             attacks = serialize(rays);
 
@@ -1321,18 +942,6 @@ std::vector<std::uint16_t> GameState::get_legal_moves()
                         }
                         move &= ((~0) >> 4);
                     }
-                }
-            }
-
-            rays |= (((1ULL << p) << 7) & ~Bitwise::HFILE);
-            rays |= (((1ULL << p) << 9) & ~Bitwise::AFILE);
-
-            if (read(rays, undo.en_passant_square))
-            {
-                move = (undo.en_passant_square << 6) | p;
-                move |= (5 << 12);
-                if (validate_move(move)) {
-                    legal_moves.push_back(move);
                 }
             }
         }
@@ -1359,7 +968,7 @@ std::vector<std::uint16_t> GameState::get_legal_moves()
     if (read(castling, 0)) {
         if (kingside_eligibility()) {
             std::uint16_t move = ((6 + castle_shift) << 6) | (4 + castle_shift);
-            set(&move, 13);
+            move = set(move, 13);
             legal_moves.push_back(move);
         }
     }
@@ -1367,8 +976,8 @@ std::vector<std::uint16_t> GameState::get_legal_moves()
     if (read(castling, 1)) {
         if (queenside_eligibility()) {
             std::uint16_t move = ((2 + castle_shift) << 6) | (4 + castle_shift);
-            set(&move, 12);
-            set(&move, 13);
+            move = set(move, 12);
+            move = set(move, 13);
             legal_moves.push_back(move);
         }
     }
@@ -1421,17 +1030,17 @@ bool GameState::kingside_eligibility()
     //check handling
     for (int i = 4 + castle_shift; i < 7 + castle_shift; i++)
     {
-        clear(&bitboards[5 + color_shift], 4 + castle_shift);
-        set(&bitboards[5 + color_shift], i);
+        bitboards[5 + color_shift] = clear(bitboards[5 + color_shift], 4 + castle_shift);
+        bitboards[5 + color_shift] = set(bitboards[5 + color_shift], i);
 
         if (in_check(white_to_move)) {
-            clear(&bitboards[5 + color_shift], i);
-            set(&bitboards[5 + color_shift], 4 + castle_shift);
+            bitboards[5 + color_shift] = clear(bitboards[5 + color_shift], i);
+            bitboards[5 + color_shift] = set(bitboards[5 + color_shift], 4 + castle_shift);
             return false;
         }
 
-        clear(&bitboards[5 + color_shift], i);
-        set(&bitboards[5 + color_shift], 4 + castle_shift);
+        bitboards[5 + color_shift] = clear(bitboards[5 + color_shift], i);
+        bitboards[5 + color_shift] = set(bitboards[5 + color_shift], 4 + castle_shift);
     }
 
 
@@ -1478,17 +1087,17 @@ bool GameState::queenside_eligibility()
     //check handling
     for (int i = 2 + castle_shift; i < 5 + castle_shift; i++)
     {
-        clear(&bitboards[5 + color_shift], 4 + castle_shift);
-        set(&bitboards[5 + color_shift], i);
+        bitboards[5 + color_shift] = clear(bitboards[5 + color_shift], 4 + castle_shift);
+        bitboards[5 + color_shift] = set(bitboards[5 + color_shift], i);
 
         if (in_check(white_to_move)) {
-            clear(&bitboards[5 + color_shift], i);
-            set(&bitboards[5 + color_shift], 4 + castle_shift);
+            bitboards[5 + color_shift] = clear(bitboards[5 + color_shift], i);
+            bitboards[5 + color_shift] = set(bitboards[5 + color_shift], 4 + castle_shift);
             return false;
         }
 
-        clear(&bitboards[5 + color_shift], i);
-        set(&bitboards[5 + color_shift], 4 + castle_shift);
+        bitboards[5 + color_shift] = clear(bitboards[5 + color_shift], i);
+        bitboards[5 + color_shift] = set(bitboards[5 + color_shift], 4 + castle_shift);
     }
 
 

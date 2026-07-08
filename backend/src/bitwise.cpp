@@ -8,29 +8,24 @@
 //only important consideration is that constants often must be cast to uint64_t
 
 
-void set(std::uint64_t* board, int position) {
-    std::uint64_t mask = std::uint64_t(1) << position;
-    *board |= mask;
+std::uint64_t set(std::uint64_t board, int position) {
+    return (1ULL << position) | board;
 }
 
-void set(std::uint8_t* board, int position) {
-    std::uint64_t mask = std::uint8_t(1) << position;
-    *board |= mask;
+std::uint8_t set(std::uint8_t board, int position) {
+    return (std::uint8_t(1) << position) | board;
 }
 
-void set(std::uint16_t* board, int position) {
-    std::uint64_t mask = std::uint16_t(1) << position;
-    *board |= mask;
+std::uint16_t set(std::uint16_t board, int position) {
+    return (std::uint16_t(1) << position) | board;
 }
 
-void clear(std::uint64_t* board, int position) {
-    std::uint64_t mask = ~(std::uint64_t(1) << position);
-    *board &= mask;
+std::uint64_t clear(std::uint64_t board, int position) {
+    return ~(1ULL << position) & board;
 }
 
-void clear(std::uint8_t* board, int position) {
-    std::uint64_t mask = ~(std::uint8_t(1) << position);
-    *board &= mask;
+std::uint8_t clear(std::uint8_t board, int position) {
+    return (std::uint8_t(1) << position) & board;
 }
 
 std::uint8_t read(std::uint64_t board, int position) {
@@ -104,7 +99,7 @@ std::vector<std::uint8_t> serialize(std::uint64_t bitboard) {
     while (bitboard)
     {
         std::uint8_t trailing = bitscan_forward(bitboard);
-        clear(&bitboard, trailing);
+        bitboard = clear(bitboard, trailing);
         indices.push_back(trailing);
     }
 

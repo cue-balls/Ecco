@@ -6,11 +6,11 @@
 #include "GameState.h"
 
 
-void set(std::uint64_t* board, int position);
-void set(std::uint8_t* board, int position);
-void set(std::uint16_t* board, int position);
-void clear(std::uint64_t* board, int position);
-void clear(std::uint8_t* board, int position);
+std::uint64_t set(std::uint64_t board, int position);
+std::uint8_t set(std::uint8_t board, int position);
+std::uint16_t set(std::uint16_t board, int position);
+std::uint64_t clear(std::uint64_t board, int position);
+std::uint8_t clear(std::uint8_t board, int position);
 std::uint8_t read(std::uint64_t board, int position);
 void view_bitboard(std::uint64_t board);
 std::uint8_t bitscan_forward(std::uint64_t bitboard);

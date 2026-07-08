@@ -25,12 +25,15 @@
 
 #include <iostream>
 #include <cstdint>
+#include <chrono>
 #include "../lib/httplib.h"
 #include "GameState.h"
 #include "bitwise.h"
 
 std::vector<std::uint16_t> deb;
 std::vector<std::string> de;
+
+unsigned long long count = 0;
 
 int alpha_beta(GameState* state, int alpha, int beta, int depth);
 
@@ -57,6 +60,7 @@ int main() {
 
         std::string out;
         
+        auto start = std::chrono::high_resolution_clock::now();
         if (moves.size() != 0)
         {
             int alpha = -100000;
@@ -78,6 +82,10 @@ int main() {
 
                 alpha = std::max(alpha, eval);
             }
+            auto end = std::chrono::high_resolution_clock::now();
+            std::chrono::duration<double, std::milli> elapsed = end - start;
+            std::cout << elapsed << std::endl;
+            std::cout << count << std::endl;
             
 
 
@@ -109,7 +117,7 @@ int main() {
 
         std::string json = "{\"move\":\"" + out + "\"}";
         res.set_content(json, "text/plain");
-        
+        delete game;
     });
 
     std::cout << "Server listening on 0.0.0.0:8080" << std::endl;
@@ -133,8 +141,9 @@ int main() {
     //view_bitboard(board);
     //std::cout << std::endl;
     
-    GameState state("r1bqkb1r/pppppppp/n6B/8/3Pn3/N2Q4/PPP1PPPP/R3KBNR b KQkq - 0 1");
+    GameState state("8/8/8/8/3K4/8/8/8 w - - 0 1");
     GameState::populate_attacks();
+
 
     //state.make_move(3388);
     //state.unmake_move(3388);
@@ -143,7 +152,7 @@ int main() {
     //state.make_move(2130);
     //state.make_move(17049);
     //state.make_move(19617);
-    GameState game;
+    /*GameState game;
     while (1)
     {
         std::string fen;
@@ -160,7 +169,7 @@ int main() {
         std::cout << std::endl;
         state.view_gamestate();
         std::cout << std::endl;
-       /* game = GameState(fen);
+        game = GameState(fen);
         std::vector<std::uint16_t> moves = game.get_legal_moves();
         game.view_gamestate();
         std::cout << moves.size() << std::endl;
@@ -173,8 +182,8 @@ int main() {
             //std::cout << from << to  << " --> " << (int)((m >> 12) & 15) << std::endl;
         }
         view_bitboard(game.bitboards[6] | game.bitboards[13]);
-        std::cout << std::endl;*/
-    }
+        std::cout << std::endl;
+    }*/
 
 
     //std::uint64_t king = GameState::piece_attacks[0][45];
@@ -254,6 +263,7 @@ int main() {
 
 int alpha_beta(GameState* state, int alpha, int beta, int depth)
 {
+    count++;
     if (depth == 0) {
         return state->evaluate();
     }
