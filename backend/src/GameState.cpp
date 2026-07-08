@@ -208,7 +208,8 @@ void GameState::make_move(std::uint16_t move)
         bitboards[13 - color_shift] = clear(bitboards[13 - color_shift], target_square);
     }
 
-    bitboards[6 + color_shift] ^= ((1ULL << from_square) | (1ULL << target_square));
+    bitboards[6 + color_shift] = clear(bitboards[6 + color_shift], from_square);
+    bitboards[6 + color_shift] = set(bitboards[6 + color_shift], target_square);
     
 
     
