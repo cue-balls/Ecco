@@ -7,6 +7,13 @@
 //basic bitwise stuff
 //only important consideration is that constants often must be cast to uint64_t
 
+std::uint64_t primary_A = ~Bitwise::AFILE;
+std::uint64_t secondary_A = (primary_A << 1) & primary_A;
+std::uint64_t tertiary_A = (secondary_A << 2) & secondary_A;
+std::uint64_t primary_H = ~Bitwise::HFILE;
+std::uint64_t secondary_H = (primary_H >> 1) & primary_H;
+std::uint64_t tertiary_H = (secondary_H >> 2) & secondary_H;
+
 
 std::uint64_t set(std::uint64_t board, int position) {
     return (1ULL << position) | board;
@@ -123,67 +130,49 @@ std::uint64_t fill_south(std::uint64_t gen) {
 }
 
 std::uint64_t fill_east(std::uint64_t gen) {
-    std::uint64_t primary = ~Bitwise::AFILE;
-    std::uint64_t secondary = (primary << 1) & primary;
-    std::uint64_t tertiary = (secondary << 2) & secondary;
-    gen |= ((gen << 1) & primary);
-    gen |= ((gen << 2) & secondary);
-    gen |= ((gen << 4) & tertiary);
+    gen |= ((gen << 1) & primary_A);
+    gen |= ((gen << 2) & secondary_A);
+    gen |= ((gen << 4) & tertiary_A);
 
     return gen;
 }
 
 std::uint64_t fill_west(std::uint64_t gen) {
-    std::uint64_t primary = ~Bitwise::HFILE;
-    std::uint64_t secondary = (primary >> 1) & primary;
-    std::uint64_t tertiary = (secondary >> 2) & secondary;
-    gen |= ((gen >> 1) & primary);
-    gen |= ((gen >> 2) & secondary);
-    gen |= ((gen >> 4) & tertiary);
+    gen |= ((gen >> 1) & primary_H);
+    gen |= ((gen >> 2) & secondary_H);
+    gen |= ((gen >> 4) & tertiary_H);
 
     return gen;
 }
 
 std::uint64_t fill_northeast(std::uint64_t gen) {
-    std::uint64_t primary = ~Bitwise::AFILE;
-    std::uint64_t secondary = (primary << 1) & primary;
-    std::uint64_t tertiary = (secondary << 2) & secondary;
-    gen |= ((gen >> 7) & primary);
-    gen |= ((gen >> 14) & secondary);
-    gen |= ((gen >> 28) & tertiary);
+    gen |= ((gen >> 7) & primary_A);
+    gen |= ((gen >> 14) & secondary_A);
+    gen |= ((gen >> 28) & tertiary_A);
     
     return gen;
 }
 
 std::uint64_t fill_northwest(std::uint64_t gen) {
-    std::uint64_t primary = ~Bitwise::HFILE;
-    std::uint64_t secondary = (primary >> 1) & primary;
-    std::uint64_t tertiary = (secondary >> 2) & secondary;
-    gen |= ((gen >> 9) & primary);
-    gen |= ((gen >> 18) & secondary);
-    gen |= ((gen >> 36) & tertiary);
+    gen |= ((gen >> 9) & primary_H);
+    gen |= ((gen >> 18) & secondary_H);
+    gen |= ((gen >> 36) & tertiary_H);
     
     return gen;
 }
 
 std::uint64_t fill_southeast(std::uint64_t gen) {
-    std::uint64_t primary = ~Bitwise::AFILE;
-    std::uint64_t secondary = (primary << 1) & primary;
-    std::uint64_t tertiary = (secondary << 2) & secondary;
-    gen |= ((gen << 9) & primary);
-    gen |= ((gen << 18) & secondary);
-    gen |= ((gen << 36) & tertiary);
+    gen |= ((gen << 9) & primary_A);
+    gen |= ((gen << 18) & secondary_A);
+    gen |= ((gen << 36) & tertiary_A);
     
     return gen;
 }
 
 std::uint64_t fill_southwest(std::uint64_t gen) {
-    std::uint64_t primary = ~Bitwise::HFILE;
-    std::uint64_t secondary = (primary >> 1) & primary;
-    std::uint64_t tertiary = (secondary >> 2) & secondary;
-    gen |= ((gen << 7) & primary);
-    gen |= ((gen << 14) & secondary);
-    gen |= ((gen << 28) & tertiary);
+    gen |= ((gen << 7) & primary_H);
+    gen |= ((gen << 14) & secondary_H);
+    gen |= ((gen << 28) & tertiary_H);
     
     return gen;
 }

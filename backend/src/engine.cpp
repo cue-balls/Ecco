@@ -19,13 +19,14 @@
 
 #ifdef NULL
 #undef NULL
-#define NULL 0
+#define NULL 0l
 #endif
 
 
 #include <iostream>
 #include <cstdint>
 #include <chrono>
+#include <memory>
 #include "../lib/httplib.h"
 #include "GameState.h"
 #include "bitwise.h"
@@ -36,6 +37,14 @@ std::vector<std::string> de;
 unsigned long long count = 0;
 
 int alpha_beta(GameState* state, int alpha, int beta, int depth);
+
+
+struct LinkedList {
+    std::uint64_t bitfield;
+    LinkedList* next;
+};
+
+std::vector<LinkedList> transposition_table(0x4000000);
 
 
 int main() {
@@ -86,6 +95,7 @@ int main() {
             std::chrono::duration<double, std::milli> elapsed = end - start;
             std::cout << elapsed << std::endl;
             std::cout << count << std::endl;
+            std::cout << best_eval << std::endl;
             
 
 
@@ -141,7 +151,7 @@ int main() {
     //view_bitboard(board);
     //std::cout << std::endl;
     
-    GameState state("8/8/8/8/3K4/8/8/8 w - - 0 1");
+    GameState state("8/3P4/8/7k/4K3/8/8/8 w - - 0 1");
     GameState::populate_attacks();
 
 
@@ -152,34 +162,20 @@ int main() {
     //state.make_move(2130);
     //state.make_move(17049);
     //state.make_move(19617);
-    /*GameState game;
-    while (1)
+    //GameState game;
+    /*while (1)
     {
         std::string fen;
         std::getline(std::cin, fen);
-        std::uint16_t mm = std::stoi(fen.substr(2));
-        if (fen[0] == 'm') {
-           state.make_move(mm); 
-        }
-        else {
-            state.unmake_move(mm);
-        }
-
-        view_bitboard(state.bitboards[6]);
-        std::cout << std::endl;
-        state.view_gamestate();
-        std::cout << std::endl;
-        game = GameState(fen);
+        GameState game = GameState(fen);
         std::vector<std::uint16_t> moves = game.get_legal_moves();
         game.view_gamestate();
         std::cout << moves.size() << std::endl;
         for (std::uint16_t m : moves)
         {
-            game.make_move(m);
-            game.unmake_move(m);
-            //std::string from = int_to_square(m & 63);
-            //std::string to = int_to_square((m >> 6) & 63);
-            //std::cout << from << to  << " --> " << (int)((m >> 12) & 15) << std::endl;
+            std::string from = int_to_square(m & 63);
+            std::string to = int_to_square((m >> 6) & 63);
+            std::cout << from << to  << " --> " << (int)((m >> 12) & 15) << std::endl;
         }
         view_bitboard(game.bitboards[6] | game.bitboards[13]);
         std::cout << std::endl;
@@ -263,7 +259,7 @@ int main() {
 
 int alpha_beta(GameState* state, int alpha, int beta, int depth)
 {
-    count++;
+    //count++;
     if (depth == 0) {
         return state->evaluate();
     }
@@ -306,13 +302,13 @@ int alpha_beta(GameState* state, int alpha, int beta, int depth)
 
         int current_eval = state->evaluate();
         
-        int adj_depth = depth - 1;
+        //int adj_depth = depth - 1;
         //if (root_eval - current_eval >= 400) {
           //  adj_depth /= 2;
         //}
         
 
-        int eval = -alpha_beta(state, -beta, -alpha, adj_depth);
+        int eval = -alpha_beta(state, -beta, -alpha, depth - 1);
 
 
         state->unmake_move(m);

@@ -198,22 +198,6 @@ void GameState::make_move(std::uint16_t move)
     }
 
 
-    bitboards[moving_piece] ^= ((1ULL << target_square) | (1ULL << from_square));
-    mailbox[target_square] = moving_piece;
-    mailbox[from_square] = 255;
-
-    if (read(special_move_data, 2) && special_move_data != 5)
-    {
-        bitboards[capture] = clear(bitboards[capture], target_square);
-        bitboards[13 - color_shift] = clear(bitboards[13 - color_shift], target_square);
-    }
-
-    bitboards[6 + color_shift] = clear(bitboards[6 + color_shift], from_square);
-    bitboards[6 + color_shift] = set(bitboards[6 + color_shift], target_square);
-    
-
-    
-
     //determining changes to castling rights
     if (castling != 0)
     {
@@ -234,24 +218,44 @@ void GameState::make_move(std::uint16_t move)
             break;
         }
     }
+
+
+
+    bitboards[moving_piece] ^= ((1ULL << target_square) | (1ULL << from_square));
+    mailbox[target_square] = moving_piece;
+    mailbox[from_square] = 255;
+
+
+    bitboards[6 + color_shift] = clear(bitboards[6 + color_shift], from_square);
+    bitboards[6 + color_shift] = set(bitboards[6 + color_shift], target_square);
     
 
-    if (special_move_data == 0) {
-        undo.captured_piece = capture;
-        undo.castling_rights = castling;
-        undo.en_passant_square = en_passant;
-        state_stack.push_back(undo);
-        white_to_move = !white_to_move;
-        return;
-    }
-
-
     
-
-    //setting en passant flag
-    if (special_move_data == 1) 
+    if (special_move_data == 1) //setting en passant flag
     {
         en_passant = (target_square + from_square) / 2;
+    }
+    else if (special_move_data == 5) //en passant capture
+    {
+        if (moving_piece == 0)
+        {
+            bitboards[7] = clear(bitboards[7], target_square + 8);
+            bitboards[13] = clear(bitboards[13], target_square + 8);
+            mailbox[target_square + 8] = 255;
+            capture = 7;
+        }
+        else
+        {
+            bitboards[0] = clear(bitboards[0], target_square - 8);
+            bitboards[6] = clear(bitboards[6], target_square - 8);
+            mailbox[target_square - 8] = 255;
+            capture = 0;
+        }
+    }
+    else if (read(special_move_data, 2))
+    {
+        bitboards[capture] = clear(bitboards[capture], target_square);
+        bitboards[13 - color_shift] = clear(bitboards[13 - color_shift], target_square);
     }
     else if (special_move_data == 2) 
     {
@@ -287,24 +291,6 @@ void GameState::make_move(std::uint16_t move)
             bitboards[13] ^= ((1ULL) | (1ULL << 3));
             mailbox[0] = 255;
             mailbox[3] = 10;
-        }
-    }
-    //en passant capture
-    else if (special_move_data == 5) 
-    {
-        if (target_square / 8 == 2)
-        {
-            bitboards[7] = clear(bitboards[7], target_square + 8);
-            bitboards[13] = clear(bitboards[13], target_square + 8);
-            mailbox[target_square + 8] = 255;
-            capture = 7;
-        }
-        else if (target_square / 8 == 5)
-        {
-            bitboards[0] = clear(bitboards[0], target_square - 8);
-            bitboards[6] = clear(bitboards[6], target_square - 8);
-            mailbox[target_square - 8] = 255;
-            capture = 0;
         }
     }
 
@@ -398,7 +384,22 @@ void GameState::unmake_move(std::uint16_t move)
         white_to_move = !white_to_move;
         return;
     }
-    else if (read(special_move_data, 2) && special_move_data != 5) 
+    else if (special_move_data == 5) //undoing en passant
+    {
+        if (moving_piece == 0)
+        {
+            bitboards[7] = set(bitboards[7], target_square + 8);
+            bitboards[13] = set(bitboards[13], target_square + 8);
+            mailbox[target_square + 8] = 7;
+        }
+        else
+        {
+            bitboards[0] = set(bitboards[0], target_square - 8);
+            bitboards[6] = set(bitboards[6], target_square - 8);
+            mailbox[target_square - 8] = 0;
+        }
+    }
+    else if (read(special_move_data, 2)) 
     {
         bitboards[capture] = set(bitboards[capture], target_square);
         bitboards[13 - color_shift] = set(bitboards[13 - color_shift], target_square);
@@ -436,21 +437,6 @@ void GameState::unmake_move(std::uint16_t move)
             bitboards[13] ^= ((1ULL) | (1ULL << 3));
             mailbox[3] = 255;
             mailbox[0] = 10;
-        }
-    }
-    else if (special_move_data == 5) //undoing en passant
-    {
-        if (moving_piece < 6)
-        {
-            bitboards[7] = set(bitboards[7], target_square + 8);
-            bitboards[13] = set(bitboards[13], target_square + 8);
-            mailbox[target_square + 8] = 7;
-        }
-        else
-        {
-            bitboards[0] = set(bitboards[0], target_square - 8);
-            bitboards[6] = set(bitboards[6], target_square - 8);
-            mailbox[target_square - 8] = 0;
         }
     }
     
@@ -593,11 +579,17 @@ bool GameState::in_check(bool white)
     //those squares can then be checked to see if that piece is there
 
 
-    //searching for knight checks
-    std::uint64_t ray = piece_attacks[0][king_square] & bitboards[8 - color_shift];
+    std::uint64_t ray = piece_attacks[2][king_square];
+    ray = occlude_north(ray, bitboards[6] | bitboards[13], king_square);
+    ray = occlude_east(ray, bitboards[6] | bitboards[13], king_square);
+    ray = occlude_south(ray, bitboards[6] | bitboards[13], king_square);
+    ray = occlude_west(ray, bitboards[6] | bitboards[13], king_square);
+    ray &= (bitboards[10 - color_shift] | bitboards[11 - color_shift]);
+
     if (ray) {
         return true;
     }
+
 
     ray = piece_attacks[1][king_square];
     ray = occlude_northeast(ray, bitboards[6] | bitboards[13], king_square);
@@ -610,13 +602,9 @@ bool GameState::in_check(bool white)
         return true;
     }
 
-    ray = piece_attacks[2][king_square];
-    ray = occlude_north(ray, bitboards[6] | bitboards[13], king_square);
-    ray = occlude_east(ray, bitboards[6] | bitboards[13], king_square);
-    ray = occlude_south(ray, bitboards[6] | bitboards[13], king_square);
-    ray = occlude_west(ray, bitboards[6] | bitboards[13], king_square);
-    ray &= (bitboards[10 - color_shift] | bitboards[11 - color_shift]);
 
+    //searching for knight checks
+    ray = piece_attacks[0][king_square] & bitboards[8 - color_shift];
     if (ray) {
         return true;
     }
@@ -808,13 +796,13 @@ std::vector<std::uint16_t> GameState::get_legal_moves()
                 }
                 else
                 {
-                    for (std::uint8_t i = 8; i < 12; i++)
+                    for (std::uint16_t i = 8; i < 12; i++)
                     {
                         move |= (i << 12);
                         if (validate_move(move)) {
                             legal_moves.push_back(move);
                         }
-                        move &= ((~0) >> 4);
+                        move &= 0x0FFF;
                     }
                 }
 
@@ -844,7 +832,7 @@ std::vector<std::uint16_t> GameState::get_legal_moves()
             }
 
             rays &= bitboards[13];
-            rays &= bitboards[13];
+            
 
             attacks = serialize(rays);
 
@@ -860,13 +848,13 @@ std::vector<std::uint16_t> GameState::get_legal_moves()
                 }
                 else
                 {
-                    for (std::uint8_t i = 12; i < 16; i++)
+                    for (std::uint16_t i = 12; i < 16; i++)
                     {
                         move |= (i << 12);
                         if (validate_move(move)) {
                             legal_moves.push_back(move);
                         }
-                        move &= ((~0) >> 4);
+                        move &= 0x0FFF;
                     }
                 }
             }
@@ -883,13 +871,13 @@ std::vector<std::uint16_t> GameState::get_legal_moves()
                 }
                 else
                 {
-                    for (std::uint8_t i = 8; i < 12; i++)
+                    for (std::uint16_t i = 8; i < 12; i++)
                     {
                         move |= (i << 12);
                         if (validate_move(move)) {
                             legal_moves.push_back(move);
                         }
-                        move &= ((~0) >> 4);
+                        move &= 0x0FFF;
                     }
                 }
 
@@ -919,7 +907,7 @@ std::vector<std::uint16_t> GameState::get_legal_moves()
             }
 
             rays &= bitboards[6];
-            rays &= bitboards[6];
+
 
             attacks = serialize(rays);
 
@@ -935,13 +923,13 @@ std::vector<std::uint16_t> GameState::get_legal_moves()
                 }
                 else
                 {
-                    for (std::uint8_t i = 12; i < 16; i++)
+                    for (std::uint16_t i = 12; i < 16; i++)
                     {
                         move |= (i << 12);
                         if (validate_move(move)) {
                             legal_moves.push_back(move);
                         }
-                        move &= ((~0) >> 4);
+                        move &= 0x0FFF;
                     }
                 }
             }

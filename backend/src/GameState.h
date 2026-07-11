@@ -19,10 +19,35 @@ struct check_t {
 };
 
 class GameState {
+
+    bool operator==(const GameState& other) const {
+        bool out = true;
+        for (int i = 0; i < 14; i++) {
+            if (other.bitboards[i] != bitboards[i]) {
+                return false;
+            }
+        }
+
+        if (other.white_to_move != white_to_move) {
+            return false;
+        }
+
+        if (other.state_stack[other.state_stack.size() - 1].castling_rights != state_stack[state_stack.size() - 1].castling_rights) {
+            return false;
+        }
+
+        if (other.state_stack[other.state_stack.size() - 1].en_passant_square != state_stack[state_stack.size() - 1].en_passant_square) {
+            return false;
+        }
+
+        return true;
+    }
+
     public:
         std::vector<std::uint64_t> bitboards;
         std::vector<UndoState> state_stack;
         std::vector<std::uint8_t> mailbox;
+        std::uint64_t hash_key;
         bool white_to_move;
 
         //piece lookup array
