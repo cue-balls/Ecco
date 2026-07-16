@@ -19,30 +19,7 @@ struct check_t {
 };
 
 class GameState {
-
-    bool operator==(const GameState& other) const {
-        bool out = true;
-        for (int i = 0; i < 14; i++) {
-            if (other.bitboards[i] != bitboards[i]) {
-                return false;
-            }
-        }
-
-        if (other.white_to_move != white_to_move) {
-            return false;
-        }
-
-        if (other.state_stack[other.state_stack.size() - 1].castling_rights != state_stack[state_stack.size() - 1].castling_rights) {
-            return false;
-        }
-
-        if (other.state_stack[other.state_stack.size() - 1].en_passant_square != state_stack[state_stack.size() - 1].en_passant_square) {
-            return false;
-        }
-
-        return true;
-    }
-
+    
     public:
         std::vector<std::uint64_t> bitboards;
         std::vector<UndoState> state_stack;
@@ -54,12 +31,14 @@ class GameState {
         inline static const char piece_order[] = {'P', 'N', 'B', 'R', 'Q', 'K', '-', 'p', 'n', 'b', 'r', 'q', 'k', '-'};
         inline static const int piece_value[] = {100, 300, 300, 500, 900, 0, 0, 100, 300, 300, 500, 900, 0, 0};
         inline static std::vector<std::vector<std::uint64_t>> piece_attacks;
+        inline static std::vector<std::uint64_t> zobrist_keys;
         
         GameState(std::string FEN);
         void view_gamestate();
 
 
         static void populate_attacks();
+        static void generate_keys();
         bool in_check(bool white);
         bool validate_move(std::uint16_t move);
         bool kingside_eligibility();
@@ -68,7 +47,7 @@ class GameState {
         void make_move(std::uint16_t move);
         void unmake_move(std::uint16_t move);
         std::vector<std::uint16_t> get_legal_moves();
-        int evaluate();
+        std::int16_t evaluate();
 
     private:
     

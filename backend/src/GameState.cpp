@@ -264,14 +264,16 @@ void GameState::make_move(std::uint16_t move)
         if (target_square == 62) //white
         {
             bitboards[3] ^= ((1ULL << 63) | (1ULL << 61));
-            bitboards[6] ^= ((1ULL << 63) || (1ULL << 61));
+            bitboards[6] = set(bitboards[6], 61);
+            bitboards[6] = clear(bitboards[6], 63);
             mailbox[63] = 255;
             mailbox[61] = 3;
         }
         else if (target_square == 6) //black
         {
             bitboards[10] ^= ((1ULL << 7) | (1ULL << 5));
-            bitboards[13] ^= ((1ULL << 7) | (1ULL << 5));
+            bitboards[13] = set(bitboards[13], 5);
+            bitboards[13] = clear(bitboards[13], 7);
             mailbox[7] = 255;
             mailbox[5] = 10;
         }
@@ -281,14 +283,16 @@ void GameState::make_move(std::uint16_t move)
         if (target_square == 58) //white
         {
             bitboards[3] ^= ((1ULL << 56) | (1ULL << 59));
-            bitboards[6] ^= ((1ULL << 56) | (1ULL << 59));
+            bitboards[6] = set(bitboards[6], 59);
+            bitboards[6] = clear(bitboards[6], 56);
             mailbox[56] = 255;
             mailbox[59] = 3;
         }
         else if (target_square == 2) //black
         {
             bitboards[10] ^= ((1ULL) | (1ULL << 3));
-            bitboards[13] ^= ((1ULL) | (1ULL << 3));
+            bitboards[13] = set(bitboards[13], 3);
+            bitboards[13] = clear(bitboards[13], 0);
             mailbox[0] = 255;
             mailbox[3] = 10;
         }
@@ -410,14 +414,16 @@ void GameState::unmake_move(std::uint16_t move)
         if (moving_piece < 6)
         {
             bitboards[3] ^= ((1ULL << 61) | (1ULL << 63));
-            bitboards[6] ^= ((1ULL << 61) | (1ULL << 63));
+            bitboards[6] = set(bitboards[6], 63);
+            bitboards[6] = clear(bitboards[6], 61);
             mailbox[61] = 255;
             mailbox[63] = 3;
         }
         else
         {
             bitboards[10] ^= ((1ULL << 5) | (1ULL << 7));
-            bitboards[13] ^= ((1ULL << 5) | (1ULL << 7));
+            bitboards[13] = set(bitboards[13], 7);
+            bitboards[13] = clear(bitboards[13], 5);
             mailbox[5] = 255;
             mailbox[7] = 10;
         }
@@ -427,14 +433,16 @@ void GameState::unmake_move(std::uint16_t move)
         if (moving_piece < 6)
         {
             bitboards[3] ^= ((1ULL << 59) | (1ULL << 56));
-            bitboards[6] ^= ((1ULL << 59) | (1ULL << 56));
+            bitboards[6] = set(bitboards[6], 56);
+            bitboards[6] = clear(bitboards[6], 59);
             mailbox[59] = 255;
             mailbox[56] = 3;
         }
         else
         {
             bitboards[10] ^= ((1ULL) | (1ULL << 3));
-            bitboards[13] ^= ((1ULL) | (1ULL << 3));
+            bitboards[13] = set(bitboards[13], 0);
+            bitboards[13] = clear(bitboards[13], 3);
             mailbox[3] = 255;
             mailbox[0] = 10;
         }

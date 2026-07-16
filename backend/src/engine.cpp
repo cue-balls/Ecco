@@ -27,6 +27,7 @@
 #include <cstdint>
 #include <chrono>
 #include <memory>
+#include <utility>
 #include "../lib/httplib.h"
 #include "GameState.h"
 #include "bitwise.h"
@@ -36,15 +37,10 @@ std::vector<std::string> de;
 
 unsigned long long count = 0;
 
-int alpha_beta(GameState* state, int alpha, int beta, int depth);
+std::int16_t alpha_beta(GameState* state, std::int16_t alpha, std::int16_t beta, int depth);
 
-
-struct LinkedList {
-    std::uint64_t bitfield;
-    LinkedList* next;
-};
-
-std::vector<LinkedList> transposition_table(0x4000000);
+const int TABLE_SIZE = 0x4000000;
+std::vector<std::uint64_t> transposition_table(TABLE_SIZE);
 
 
 int main() {
@@ -63,6 +59,7 @@ int main() {
         res.set_header("Access-Control-Allow-Origin", "*");
 
         std::cout << "received" << std::endl;
+
         GameState * game = new GameState(req.body);
 
         std::vector<std::uint16_t> moves = game->get_legal_moves();
@@ -72,38 +69,62 @@ int main() {
         auto start = std::chrono::high_resolution_clock::now();
         if (moves.size() != 0)
         {
-            int alpha = -100000;
-            int beta = 100000;
+            std::int16_t alpha = -32707;
+            std::int16_t beta = 32707;
 
-            std::uint16_t move;
-            int best_eval = -1000000;
+            std::uint16_t best_move;
+            std::int16_t best_eval = -32767;
+//rnbqkbnr/pppppppp/8/4P3/3P1P2/2N5/PPP3PP/R1BQKBNR b KQkq - 0 1
+
+
+            std::vector<std::pair<std::uint16_t, std::int16_t>> evaluated_moves;
+
+            for (std::uint16_t move : moves) {
+                game->make_move(move);
+                std::int16_t eval = game->evaluate();
+                game->unmake_move(move);
+                
+                evaluated_moves.push_back({move, eval});
+            }
+
+            std::sort(evaluated_moves.begin(), evaluated_moves.end(), [](const auto& a, const auto& b) {
+                return a.second < b.second;
+            });
+
+
+            for (int i = 0; i < moves.size(); i++) {
+                moves[i] = evaluated_moves[i].first;
+            }
+
+            std::cout << moves.size() << std::endl;
 
             for (std::uint16_t m : moves)
             {
                 game->make_move(m);
-                int eval = -alpha_beta(game, -beta, -alpha, 7);
+                std::int16_t eval = -alpha_beta(game, -beta, -alpha, 5);
                 game->unmake_move(m);
+
 
                 if (eval > best_eval) {
                     best_eval = eval;
-                    move = m;
+                    best_move = m;
                 }
 
-                alpha = std::max(alpha, eval);
+                alpha = std::max((int)alpha, (int)eval);
             }
             auto end = std::chrono::high_resolution_clock::now();
             std::chrono::duration<double, std::milli> elapsed = end - start;
-            std::cout << elapsed << std::endl;
-            std::cout << count << std::endl;
-            std::cout << best_eval << std::endl;
+            //std::cout << elapsed << std::endl;
+            //std::cout << count << std::endl;
+            //std::cout << (int)best_eval << std::endl;
             
+            //game->view_gamestate();
 
+            out += int_to_square(best_move & 63);
+            out += int_to_square((best_move >> 6) & 63);
 
-            out += int_to_square(move & 63);
-            out += int_to_square((move >> 6) & 63);
-
-            if (read(move, 15)) {
-                switch ((move >> 12) & 15) {
+            if (read(best_move, 15)) {
+                switch ((best_move >> 12) & 15) {
                     case 8:
                     case 12:
                         out += 'n';
@@ -129,6 +150,7 @@ int main() {
         res.set_content(json, "text/plain");
         delete game;
     });
+    
 
     std::cout << "Server listening on 0.0.0.0:8080" << std::endl;
     svr.listen("0.0.0.0", 8080);
@@ -151,7 +173,7 @@ int main() {
     //view_bitboard(board);
     //std::cout << std::endl;
     
-    GameState state("8/3P4/8/7k/4K3/8/8/8 w - - 0 1");
+    GameState state("Qnb1kbnr/2pqpppp/1p6/p7/8/2B5/PPP2PPP/R3KBNR b KQk - 0 1");
     GameState::populate_attacks();
 
 
@@ -257,7 +279,7 @@ int main() {
 
 
 
-int alpha_beta(GameState* state, int alpha, int beta, int depth)
+std::int16_t alpha_beta(GameState* state, std::int16_t alpha, std::int16_t beta, int depth)
 {
     //count++;
     if (depth == 0) {
@@ -268,23 +290,62 @@ int alpha_beta(GameState* state, int alpha, int beta, int depth)
     if (legal_moves.size() == 0)
     {
         if (state->in_check(state->white_to_move)) {
-            return -50000 - depth;
+            return -32000 - depth;
         }
 
         return 0;
     }
 
 
-    int root_eval = state->evaluate();
-    int max_eval = -100000;
+    std::int16_t root_eval = state->evaluate();
+    std::int16_t max_eval = -32500;
     
-    std::vector<std::pair<std::uint16_t, int>> evaluated_moves;
+    /*std::vector<std::int16_t> evaluation_list(legal_moves.size());
+    for (int i = 0; i < legal_moves.size(); i++)
+    {
+        state->make_move(legal_moves[i]);
+        evaluation_list[i] = state->evaluate();
+        state->unmake_move(legal_moves[i]);
+    }
+
+    for (int m = 0; m < legal_moves.size(); m++)
+    {
+        int best_move_index = m;
+        std::int16_t best_eval = -32768;
+
+        for (int n = m; n < legal_moves.size(); n++)
+        {
+            std::int16_t current_eval = evaluation_list[n];
+
+            if (current_eval > best_eval) {
+                best_eval = current_eval;
+                best_move_index = n;
+            }
+        }
+
+        std::swap(legal_moves[m], legal_moves[best_move_index]);
+        std::swap(evaluation_list[m], evaluation_list[best_move_index]);
+
+
+        state->make_move(legal_moves[m]);
+        std::int16_t eval = -alpha_beta(state, -beta, -alpha, depth - 1);
+        state->unmake_move(legal_moves[m]);
+
+        max_eval = std::max((int)max_eval, (int)eval);
+        alpha = std::max((int)alpha, (int)eval);
+
+        if (alpha >= beta) {
+            break;
+        }
+    }*/
+
+    std::vector<std::pair<std::uint16_t, std::int16_t>> evaluated_moves;
 
     for (std::uint16_t move : legal_moves) {
         state->make_move(move);
-        int eval = state->evaluate();
+        std::int16_t eval = state->evaluate();
         state->unmake_move(move);
-        
+                
         evaluated_moves.push_back({move, eval});
     }
 
@@ -292,15 +353,18 @@ int alpha_beta(GameState* state, int alpha, int beta, int depth)
         return a.second < b.second;
     });
 
+
     for (int i = 0; i < legal_moves.size(); i++) {
         legal_moves[i] = evaluated_moves[i].first;
     }
+
+
 
     for (std::uint16_t m : legal_moves)
     {
         state->make_move(m);
 
-        int current_eval = state->evaluate();
+        std::int16_t current_eval = state->evaluate();
         
         //int adj_depth = depth - 1;
         //if (root_eval - current_eval >= 400) {
@@ -308,13 +372,13 @@ int alpha_beta(GameState* state, int alpha, int beta, int depth)
         //}
         
 
-        int eval = -alpha_beta(state, -beta, -alpha, depth - 1);
+        std::int16_t eval = -alpha_beta(state, -beta, -alpha, depth - 1);
 
 
         state->unmake_move(m);
 
-        max_eval = std::max(max_eval, eval);
-        alpha = std::max(alpha, eval);
+        max_eval = std::max((int)max_eval, (int)eval);
+        alpha = std::max((int)alpha, (int)eval);
 
         if (alpha >= beta) {
             break;

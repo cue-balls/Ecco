@@ -2,7 +2,7 @@
 #include "bitwise.h"
 #include <vector>
 
-int GameState::evaluate()
+std::int16_t GameState::evaluate()
 {
     int white_adv = 0;
     int black_adv = 0;
