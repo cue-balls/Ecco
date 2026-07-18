@@ -39,13 +39,14 @@ unsigned long long count = 0;
 
 std::int16_t alpha_beta(GameState* state, std::int16_t alpha, std::int16_t beta, int depth);
 
-const int TABLE_SIZE = 0x4000000;
+constexpr int TABLE_SIZE = 0x4000000;
 std::vector<std::uint64_t> transposition_table(TABLE_SIZE);
 
 
 int main() {
     httplib::Server svr;
     GameState::populate_attacks();
+    GameState::generate_hash_keys();
 
     svr.Options(R"(/.*)", [](const httplib::Request& req, httplib::Response& res) {
         res.set_header("Access-Control-Allow-Origin", "*");
@@ -61,6 +62,10 @@ int main() {
         std::cout << "received" << std::endl;
 
         GameState * game = new GameState(req.body);
+        std::cout << req.body << std::endl;
+        //std::cout << (int)game->state_stack[0].en_passant_square << std::endl;
+        std::cout << std::hex << game->hash_key << std::endl;
+
 
         std::vector<std::uint16_t> moves = game->get_legal_moves();
 
@@ -83,6 +88,7 @@ int main() {
                 game->make_move(move);
                 std::int16_t eval = game->evaluate();
                 game->unmake_move(move);
+
                 
                 evaluated_moves.push_back({move, eval});
             }
@@ -96,12 +102,12 @@ int main() {
                 moves[i] = evaluated_moves[i].first;
             }
 
-            std::cout << moves.size() << std::endl;
+            //std::cout << moves.size() << std::endl;
 
             for (std::uint16_t m : moves)
             {
                 game->make_move(m);
-                std::int16_t eval = -alpha_beta(game, -beta, -alpha, 5);
+                std::int16_t eval = -alpha_beta(game, -beta, -alpha, 7);
                 game->unmake_move(m);
 
 
@@ -112,6 +118,7 @@ int main() {
 
                 alpha = std::max((int)alpha, (int)eval);
             }
+            std::cout << std::hex << game->hash_key;
             auto end = std::chrono::high_resolution_clock::now();
             std::chrono::duration<double, std::milli> elapsed = end - start;
             //std::cout << elapsed << std::endl;
@@ -376,6 +383,8 @@ std::int16_t alpha_beta(GameState* state, std::int16_t alpha, std::int16_t beta,
 
 
         state->unmake_move(m);
+
+
 
         max_eval = std::max((int)max_eval, (int)eval);
         alpha = std::max((int)alpha, (int)eval);

@@ -38,7 +38,7 @@ class GameState {
 
 
         static void populate_attacks();
-        static void generate_keys();
+        static void generate_hash_keys();
         bool in_check(bool white);
         bool validate_move(std::uint16_t move);
         bool kingside_eligibility();
@@ -47,6 +47,7 @@ class GameState {
         void make_move(std::uint16_t move);
         void unmake_move(std::uint16_t move);
         std::vector<std::uint16_t> get_legal_moves();
+        std::uint64_t get_hash_preview(std::uint16_t move);
         std::int16_t evaluate();
 
     private:

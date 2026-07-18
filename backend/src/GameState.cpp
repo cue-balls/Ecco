@@ -21,6 +21,7 @@
 
 #include <iostream>
 #include <vector>
+#include <random>
 #include <cctype>
 #include "GameState.h"
 #include "bitwise.h"
@@ -140,7 +141,40 @@ GameState::GameState(std::string FEN) : bitboards(14), white_to_move(true) {
         current_state.en_passant_square = square_to_int(en_passant);
     }
     
+    current_state.en_passant_square = 43;
     state_stack.push_back(current_state);
+
+
+
+    hash_key = 0;
+    for (int square = 0; square < 64; square++)
+    {
+        if (mailbox[square] == 255) {
+            continue;
+        }
+
+
+        int piece = mailbox[square];
+        if (piece > 6) {
+            piece--;
+        }
+
+
+        hash_key ^= zobrist_keys[piece * 64 + square];
+    }
+
+
+    if (white_to_move) {
+        hash_key ^= zobrist_keys[768];
+    }
+
+
+    if (current_state.en_passant_square != 255) {
+        hash_key ^= zobrist_keys[769 + current_state.en_passant_square % 8];
+    }
+
+
+    hash_key ^= zobrist_keys[777 + castling];
 }
 
 
@@ -192,10 +226,26 @@ void GameState::make_move(std::uint16_t move)
 
     //color shift is used to differentiate between active and inactive player
     //bitboards[x + color_shift] represents piece x of the active player
-    int color_shift = 0;
-    if (moving_piece > 6) {
+    std::uint8_t adjusted_move_id = moving_piece;
+    std::uint8_t adjusted_capture_id = capture;
+    std::uint8_t adjusted_color_shift = 0;
+    std::uint8_t color_shift = 0;
+    if (moving_piece > 6) 
+    {
         color_shift = 7;
+        adjusted_color_shift = 6;
+        adjusted_move_id--;  
     }
+    else if (read(special_move_data, 2)) 
+    {
+        adjusted_capture_id--;
+    }
+
+
+    hash_key ^= zobrist_keys[adjusted_move_id * 64 + from_square];
+    hash_key ^= zobrist_keys[adjusted_move_id * 64 + target_square];
+    hash_key ^= zobrist_keys[768];
+    hash_key ^= zobrist_keys[777 + castling];
 
 
     //determining changes to castling rights
@@ -219,6 +269,12 @@ void GameState::make_move(std::uint16_t move)
         }
     }
 
+    hash_key ^= zobrist_keys[777 + castling];
+    if (state_stack[state_stack.size() - 1].en_passant_square != 255) {
+        //std::cout << "a" << std::endl;
+        hash_key ^= zobrist_keys[769 + state_stack[state_stack.size() - 1].en_passant_square % 8];
+    }
+
 
 
     bitboards[moving_piece] ^= ((1ULL << target_square) | (1ULL << from_square));
@@ -234,6 +290,7 @@ void GameState::make_move(std::uint16_t move)
     if (special_move_data == 1) //setting en passant flag
     {
         en_passant = (target_square + from_square) / 2;
+        hash_key ^= zobrist_keys[769 + ((from_square + target_square) / 2) % 8];
     }
     else if (special_move_data == 5) //en passant capture
     {
@@ -243,6 +300,7 @@ void GameState::make_move(std::uint16_t move)
             bitboards[13] = clear(bitboards[13], target_square + 8);
             mailbox[target_square + 8] = 255;
             capture = 7;
+            hash_key ^= zobrist_keys[6 * 64 + target_square + 8];
         }
         else
         {
@@ -250,12 +308,15 @@ void GameState::make_move(std::uint16_t move)
             bitboards[6] = clear(bitboards[6], target_square - 8);
             mailbox[target_square - 8] = 255;
             capture = 0;
+            hash_key ^= zobrist_keys[target_square - 8];
         }
     }
     else if (read(special_move_data, 2))
     {
+        
         bitboards[capture] = clear(bitboards[capture], target_square);
         bitboards[13 - color_shift] = clear(bitboards[13 - color_shift], target_square);
+        hash_key ^= zobrist_keys[adjusted_capture_id * 64 + target_square];
     }
     else if (special_move_data == 2) 
     {
@@ -268,6 +329,8 @@ void GameState::make_move(std::uint16_t move)
             bitboards[6] = clear(bitboards[6], 63);
             mailbox[63] = 255;
             mailbox[61] = 3;
+            hash_key ^= zobrist_keys[3 * 64 + 61];
+            hash_key ^= zobrist_keys[3 * 64 + 63];
         }
         else if (target_square == 6) //black
         {
@@ -276,6 +339,8 @@ void GameState::make_move(std::uint16_t move)
             bitboards[13] = clear(bitboards[13], 7);
             mailbox[7] = 255;
             mailbox[5] = 10;
+            hash_key ^= zobrist_keys[9 * 64 + 5];
+            hash_key ^= zobrist_keys[9 * 64 + 7];
         }
     }
     else if (special_move_data == 3)
@@ -287,6 +352,8 @@ void GameState::make_move(std::uint16_t move)
             bitboards[6] = clear(bitboards[6], 56);
             mailbox[56] = 255;
             mailbox[59] = 3;
+            hash_key ^= zobrist_keys[3 * 64 + 59];
+            hash_key ^= zobrist_keys[3 * 64 + 56];
         }
         else if (target_square == 2) //black
         {
@@ -295,6 +362,8 @@ void GameState::make_move(std::uint16_t move)
             bitboards[13] = clear(bitboards[13], 0);
             mailbox[0] = 255;
             mailbox[3] = 10;
+            hash_key ^= zobrist_keys[9 * 64 + 3];
+            hash_key ^= zobrist_keys[9 * 64];
         }
     }
 
@@ -313,6 +382,8 @@ void GameState::make_move(std::uint16_t move)
                 bitboards[0 + color_shift] = clear(bitboards[0 + color_shift], target_square);
                 bitboards[1 + color_shift] = set(bitboards[1 + color_shift], target_square);
                 mailbox[target_square] = 1 + color_shift;
+                hash_key ^= zobrist_keys[adjusted_color_shift * 64 + target_square];
+                hash_key ^= zobrist_keys[(1 + adjusted_color_shift) * 64 + target_square];
                 break;
             
             //bishop promotion
@@ -321,6 +392,8 @@ void GameState::make_move(std::uint16_t move)
                 bitboards[0 + color_shift] = clear(bitboards[0 + color_shift], target_square);
                 bitboards[2 + color_shift] = set(bitboards[2 + color_shift], target_square);
                 mailbox[target_square] = 2 + color_shift;
+                hash_key ^= zobrist_keys[adjusted_color_shift * 64 + target_square];
+                hash_key ^= zobrist_keys[(2 + adjusted_color_shift) * 64 + target_square];
                 break;
             
             //rook promotion
@@ -329,6 +402,8 @@ void GameState::make_move(std::uint16_t move)
                 bitboards[0 + color_shift] = clear(bitboards[0 + color_shift], target_square);
                 bitboards[3 + color_shift] = set(bitboards[3 + color_shift], target_square);
                 mailbox[target_square] = 3 + color_shift;
+                hash_key ^= zobrist_keys[adjusted_color_shift * 64 + target_square];
+                hash_key ^= zobrist_keys[(3 + adjusted_color_shift) * 64 + target_square];
                 break;
             
             //queen promotion
@@ -337,6 +412,8 @@ void GameState::make_move(std::uint16_t move)
                 bitboards[0 + color_shift] = clear(bitboards[0 + color_shift], target_square);
                 bitboards[4 + color_shift] = set(bitboards[4 + color_shift], target_square);
                 mailbox[target_square] = 4 + color_shift;
+                hash_key ^= zobrist_keys[adjusted_color_shift * 64 + target_square];
+                hash_key ^= zobrist_keys[(4 + adjusted_color_shift) * 64 + target_square];
                 break;
         }
     }
@@ -368,10 +445,38 @@ void GameState::unmake_move(std::uint16_t move)
     std::uint8_t capture = undo.captured_piece;
     std::uint8_t moving_piece = mailbox[target_square];
 
+    std::uint8_t adjusted_move_id = moving_piece;
+    std::uint8_t adjusted_capture_id = capture;
+    std::uint8_t adjusted_color_shift = 0;
     std::uint8_t color_shift = 0;
-    if (moving_piece > 6) {
+    if (moving_piece > 6) 
+    {
         color_shift = 7;
+        adjusted_color_shift = 6;
+        adjusted_move_id--;
     }
+    else if (read(special_move_data, 2)) 
+    {
+        adjusted_capture_id--;
+    }
+
+
+    hash_key ^= zobrist_keys[adjusted_move_id * 64 + from_square];
+    hash_key ^= zobrist_keys[adjusted_move_id * 64 + target_square];
+    hash_key ^= zobrist_keys[768];
+    hash_key ^= zobrist_keys[777 + undo.castling_rights];
+    hash_key ^= zobrist_keys[777 + state_stack[state_stack.size() - 1].castling_rights];
+    
+    if (undo.en_passant_square != 255) {
+        //std::cout << "c" << std::endl;
+        hash_key ^= zobrist_keys[769 + undo.en_passant_square % 8];
+    }
+
+    if (state_stack[state_stack.size() - 1].en_passant_square != 255) {
+        hash_key ^= zobrist_keys[769 + state_stack[state_stack.size() - 1].en_passant_square % 8];
+    }
+    
+
     
 
     bitboards[moving_piece] ^= ((1ULL << from_square) | (1ULL << target_square));
@@ -395,12 +500,14 @@ void GameState::unmake_move(std::uint16_t move)
             bitboards[7] = set(bitboards[7], target_square + 8);
             bitboards[13] = set(bitboards[13], target_square + 8);
             mailbox[target_square + 8] = 7;
+            hash_key ^= zobrist_keys[6 * 64 + target_square + 8];
         }
         else
         {
             bitboards[0] = set(bitboards[0], target_square - 8);
             bitboards[6] = set(bitboards[6], target_square - 8);
             mailbox[target_square - 8] = 0;
+            hash_key ^= zobrist_keys[target_square - 8];
         }
     }
     else if (read(special_move_data, 2)) 
@@ -408,6 +515,7 @@ void GameState::unmake_move(std::uint16_t move)
         bitboards[capture] = set(bitboards[capture], target_square);
         bitboards[13 - color_shift] = set(bitboards[13 - color_shift], target_square);
         mailbox[target_square] = capture;
+        hash_key ^= zobrist_keys[adjusted_capture_id * 64 + target_square];
     }
     else if (special_move_data == 2) //putting rooks back if move is a castle
     {
@@ -418,6 +526,8 @@ void GameState::unmake_move(std::uint16_t move)
             bitboards[6] = clear(bitboards[6], 61);
             mailbox[61] = 255;
             mailbox[63] = 3;
+            hash_key ^= zobrist_keys[3 * 64 + 61];
+            hash_key ^= zobrist_keys[3 * 64 + 63];
         }
         else
         {
@@ -426,6 +536,8 @@ void GameState::unmake_move(std::uint16_t move)
             bitboards[13] = clear(bitboards[13], 5);
             mailbox[5] = 255;
             mailbox[7] = 10;
+            hash_key ^= zobrist_keys[9 * 64 + 5];
+            hash_key ^= zobrist_keys[9 * 64 + 7];
         }
     }
     else if (special_move_data == 3)
@@ -437,6 +549,8 @@ void GameState::unmake_move(std::uint16_t move)
             bitboards[6] = clear(bitboards[6], 59);
             mailbox[59] = 255;
             mailbox[56] = 3;
+            hash_key ^= zobrist_keys[3 * 64 + 59];
+            hash_key ^= zobrist_keys[3 * 64 + 56];
         }
         else
         {
@@ -445,6 +559,8 @@ void GameState::unmake_move(std::uint16_t move)
             bitboards[13] = clear(bitboards[13], 3);
             mailbox[3] = 255;
             mailbox[0] = 10;
+            hash_key ^= zobrist_keys[9 * 64 + 3];
+            hash_key ^= zobrist_keys[9 * 64];
         }
     }
     
@@ -460,24 +576,32 @@ void GameState::unmake_move(std::uint16_t move)
                 bitboards[0 + color_shift] = set(bitboards[0 + color_shift], from_square);
                 bitboards[1 + color_shift] = clear(bitboards[1 + color_shift], from_square);
                 mailbox[from_square] = color_shift;
+                hash_key ^= zobrist_keys[adjusted_color_shift * 64 + from_square];
+                hash_key ^= zobrist_keys[(1 + adjusted_color_shift) * 64 + from_square];
                 break;
             case 9:
             case 13:
                 bitboards[0 + color_shift] = set(bitboards[0 + color_shift], from_square);
                 bitboards[2 + color_shift] = clear(bitboards[2 + color_shift], from_square);
                 mailbox[from_square] = color_shift;
+                hash_key ^= zobrist_keys[adjusted_color_shift * 64 + from_square];
+                hash_key ^= zobrist_keys[(2 + adjusted_color_shift) * 64 + from_square];
                 break;
             case 10:
             case 14:
                 bitboards[0 + color_shift] = set(bitboards[0 + color_shift], from_square);
                 bitboards[3 + color_shift] = clear(bitboards[3 + color_shift], from_square);
                 mailbox[from_square] = color_shift;
+                hash_key ^= zobrist_keys[adjusted_color_shift * 64 + from_square];
+                hash_key ^= zobrist_keys[(3 + adjusted_color_shift) * 64 + from_square];
                 break;
             case 11:
             case 15:
                 bitboards[0 + color_shift] = set(bitboards[0 + color_shift], from_square);
                 bitboards[4 + color_shift] = clear(bitboards[4 + color_shift], from_square);
                 mailbox[from_square] = color_shift;
+                hash_key ^= zobrist_keys[adjusted_color_shift * 64 + from_square];
+                hash_key ^= zobrist_keys[(4 + adjusted_color_shift) * 64 + from_square];
                 break;
         }
     }
@@ -564,6 +688,180 @@ void GameState::populate_attacks()
             }
         }
     }
+}
+
+
+
+
+
+
+
+void GameState::generate_hash_keys()
+{
+    zobrist_keys = std::vector<std::uint64_t>(793);
+    std::uint64_t seed = 422715260;
+    std::mt19937_64 gen64(seed);
+
+    
+    for (int i = 0; i < 793; i++) {
+        std::uint64_t tmp = gen64();
+        zobrist_keys[i] = tmp;
+    }
+}
+
+
+
+
+
+
+std::uint64_t GameState::get_hash_preview(std::uint16_t move)
+{
+    UndoState undo = state_stack[state_stack.size() - 1];
+
+    std::uint8_t from_square = move & 63;
+    std::uint8_t target_square = (move >> 6) & 63;
+    std::uint8_t special_move_data = (move >> 12) & 15;
+    std::uint8_t capture = undo.captured_piece;
+    std::uint8_t moving_piece = mailbox[target_square];
+    std::uint8_t castling = undo.castling_rights;
+    std::uint8_t next_hash = hash_key;
+
+    std::uint8_t adjusted_move_id = moving_piece;
+    std::uint8_t adjusted_capture_id = capture;
+    std::uint8_t adjusted_color_shift = 0;
+    std::uint8_t color_shift = 0;
+    if (moving_piece > 6) 
+    {
+        color_shift = 7;
+        adjusted_color_shift = 6;
+        adjusted_move_id--;
+    }
+    else if (read(special_move_data, 2)) 
+    {
+        adjusted_capture_id--;
+    }
+
+
+    next_hash ^= zobrist_keys[adjusted_move_id * 64 + from_square];
+    next_hash ^= zobrist_keys[adjusted_move_id * 64 + target_square];
+    next_hash ^= zobrist_keys[768];
+    next_hash ^= zobrist_keys[777 + castling];
+
+
+    if (castling != 0)
+    {
+        switch (from_square) {
+        case 0: castling = clear(castling, 3); break;
+        case 7: castling = clear(castling, 2); break;
+        case 56: castling = clear(castling, 1); break;
+        case 63: castling = clear(castling, 0); break;
+
+        case 4:
+            castling = clear(castling, 3);
+            castling = clear(castling, 2);
+            break;
+        
+        case 60:
+            castling = clear(castling, 1);
+            castling = clear(castling, 0);
+            break;
+        }
+    }
+
+    next_hash ^= zobrist_keys[777 + castling];
+    if (state_stack[state_stack.size() - 1].en_passant_square != 255) {
+        next_hash ^= zobrist_keys[769 + state_stack[state_stack.size() - 1].en_passant_square % 8];
+    }
+
+
+    if (special_move_data == 1) //setting en passant flag
+    {
+        next_hash ^= zobrist_keys[769 + (from_square + target_square / 2) % 8];
+    }
+    else if (special_move_data == 5) //en passant capture
+    {
+        if (moving_piece == 0)
+        {
+            next_hash ^= zobrist_keys[6 * 64 + target_square + 8];
+        }
+        else
+        {
+            next_hash ^= zobrist_keys[target_square - 8];
+        }
+    }
+    else if (read(special_move_data, 2))
+    {
+        next_hash ^= zobrist_keys[adjusted_capture_id * 64 + target_square];
+    }
+    else if (special_move_data == 2) 
+    {
+        if (target_square == 62) //white
+        {
+           next_hash ^= zobrist_keys[3 * 64 + 61];
+           next_hash ^= zobrist_keys[3 * 64 + 63];
+        }
+        else if (target_square == 6) //black
+        {
+            next_hash ^= zobrist_keys[9 * 64 + 5];
+            next_hash ^= zobrist_keys[9 * 64 + 7];
+        }
+    }
+    else if (special_move_data == 3)
+    {
+        if (target_square == 58) //white
+        {
+            next_hash ^= zobrist_keys[3 * 64 + 59];
+            next_hash ^= zobrist_keys[3 * 64 + 56];
+        }
+        else if (target_square == 2) //black
+        {
+            next_hash ^= zobrist_keys[9 * 64 + 3];
+            next_hash ^= zobrist_keys[9 * 64];
+        }
+    }
+
+
+
+    if (read(special_move_data, 3))
+    {
+        switch (special_move_data) {
+            
+            //knight promotion
+            case 8:
+            case 12:
+                next_hash ^= zobrist_keys[adjusted_color_shift * 64 + target_square];
+                next_hash ^= zobrist_keys[(1 + adjusted_color_shift) * 64 + target_square];
+                break;
+            
+            //bishop promotion
+            case 9:
+            case 13:
+                next_hash ^= zobrist_keys[adjusted_color_shift * 64 + target_square];
+                next_hash ^= zobrist_keys[(2 + adjusted_color_shift) * 64 + target_square];
+                break;
+            
+            //rook promotion
+            case 10:
+            case 14:
+                next_hash ^= zobrist_keys[adjusted_color_shift * 64 + target_square];
+                next_hash ^= zobrist_keys[(3 + adjusted_color_shift) * 64 + target_square];
+                break;
+            
+            //queen promotion
+            case 11:
+            case 15:
+                next_hash ^= zobrist_keys[adjusted_color_shift * 64 + target_square];
+                next_hash ^= zobrist_keys[(4 + adjusted_color_shift) * 64 + target_square];
+                break;
+        }
+    }
+
+
+
+
+
+
+    return next_hash;
 }
 
 
