@@ -37,10 +37,9 @@ std::vector<std::string> de;
 
 unsigned long long count = 0;
 
-std::int16_t alpha_beta(GameState* state, std::int16_t alpha, std::int16_t beta, int depth);
+std::int16_t alpha_beta(GameState* state, std::int16_t alpha, std::int16_t beta, int depth, std::vector<std::uint64_t>& TT);
 
 constexpr int TABLE_SIZE = 0x4000000;
-std::vector<std::uint64_t> transposition_table(TABLE_SIZE);
 
 
 int main() {
@@ -62,8 +61,8 @@ int main() {
         std::cout << "received" << std::endl;
 
         GameState * game = new GameState(req.body);
+        std::vector<std::uint64_t> transposition_table(TABLE_SIZE, 0x8000000000000000);
         std::cout << req.body << std::endl;
-        //std::cout << (int)game->state_stack[0].en_passant_square << std::endl;
         std::cout << std::hex << game->hash_key << std::endl;
 
 
@@ -79,7 +78,7 @@ int main() {
 
             std::uint16_t best_move;
             std::int16_t best_eval = -32767;
-//rnbqkbnr/pppppppp/8/4P3/3P1P2/2N5/PPP3PP/R1BQKBNR b KQkq - 0 1
+
 
 
             std::vector<std::pair<std::uint16_t, std::int16_t>> evaluated_moves;
@@ -104,11 +103,29 @@ int main() {
 
             //std::cout << moves.size() << std::endl;
 
-            for (std::uint16_t m : moves)
+            for (int i = 0; i < moves.size(); i++)
             {
+                std::uint16_t m = moves[i];
                 game->make_move(m);
-                std::int16_t eval = -alpha_beta(game, -beta, -alpha, 7);
+
+                std::int16_t eval;
+                std::uint64_t hash_value = transposition_table[(game->hash_key) & 0x3ffffffULL];
+                if (!read(hash_value, 63) && clear(hash_value >> 26, 37) == clear(game->hash_key >> 26, 37))
+                {
+                    eval = hash_value & 0xffff;
+                    count++;
+                }
+                else
+                {
+                    eval = -alpha_beta(game, -beta, -alpha, 7, transposition_table);
+                    std::uint64_t val = static_cast<std::uint64_t>(eval);
+                    val |= (clear(game->hash_key >> 26, 37) << 26);
+                    transposition_table[(game->hash_key) & 0x3ffffffULL] = val;
+                }
+                
+
                 game->unmake_move(m);
+                
 
 
                 if (eval > best_eval) {
@@ -118,10 +135,12 @@ int main() {
 
                 alpha = std::max((int)alpha, (int)eval);
             }
-            std::cout << std::hex << game->hash_key;
+            std::cout << std::hex << game->hash_key << std::endl;
+            std::cout << count << std::endl;
+            count = 0;
             auto end = std::chrono::high_resolution_clock::now();
             std::chrono::duration<double, std::milli> elapsed = end - start;
-            //std::cout << elapsed << std::endl;
+            std::cout << elapsed << std::endl;
             //std::cout << count << std::endl;
             //std::cout << (int)best_eval << std::endl;
             
@@ -286,7 +305,7 @@ int main() {
 
 
 
-std::int16_t alpha_beta(GameState* state, std::int16_t alpha, std::int16_t beta, int depth)
+std::int16_t alpha_beta(GameState* state, std::int16_t alpha, std::int16_t beta, int depth, std::vector<std::uint64_t>& TT)
 {
     //count++;
     if (depth == 0) {
@@ -367,19 +386,33 @@ std::int16_t alpha_beta(GameState* state, std::int16_t alpha, std::int16_t beta,
 
 
 
-    for (std::uint16_t m : legal_moves)
+    for (int i = 0; i < legal_moves.size(); i++)
     {
+        std::uint16_t m = legal_moves[i];
         state->make_move(m);
 
-        std::int16_t current_eval = state->evaluate();
+        //std::int16_t current_eval = state->evaluate();
         
         //int adj_depth = depth - 1;
         //if (root_eval - current_eval >= 400) {
           //  adj_depth /= 2;
         //}
         
+        std::int16_t eval;
+        std::uint64_t hash_value = TT[(state->hash_key) & 0x3ffffffULL];
+        if (!read(hash_value, 63) && clear(hash_value >> 26, 37) == clear(state->hash_key >> 26, 37))
+        {
+            eval = hash_value & 0xffff;
+            count++;
+        }
+        else
+        {
+            eval = -alpha_beta(state, -beta, -alpha, depth - 1, TT);
+            std::uint64_t val = static_cast<std::uint64_t>(eval);
+            val |= (clear(state->hash_key >> 26, 37) << 26);
+            TT[(state->hash_key) & 0x3ffffffULL] = val;
+        }
 
-        std::int16_t eval = -alpha_beta(state, -beta, -alpha, depth - 1);
 
 
         state->unmake_move(m);

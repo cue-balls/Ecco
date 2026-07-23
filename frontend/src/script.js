@@ -44,11 +44,12 @@ function onDrop (source, target, piece, newPos, oldPos, orientation) {
   const lanMovesList = verboseMoves.map(move => move.lan);
 
   var validate = false;
+  let player_move;
 
   lanMovesList.forEach((move) => {
     if (move == source + target || move == source + target + "q") {
       validate = true;
-      chess.move({from: source, to: target, promotion: "q"});
+      player_move = chess.move({from: source, to: target, promotion: "q"});
       board.position(chess.fen(), false);
 
       if (turn == "white")
@@ -67,12 +68,23 @@ function onDrop (source, target, piece, newPos, oldPos, orientation) {
     return "snapback";
   }
 
+  var pos = chess.fen();
+  if (player_move && player_move.flags.includes('b')) {
+        const file = player_move.to[0]; 
+        const epRank = player_move.color === 'w' ? '3' : '6'; 
+        const targetSquare = file + epRank;
+        const fenParts = pos.split(' ');
+        fenParts[3] = targetSquare; 
+        
+        pos = fenParts.join(' ');
+    }
+
 
   
   updateBoard().then(() => {
     if (!chess.isGameOver())
     {
-      playEngineMove(); 
+      playEngineMove(pos); 
     }
   });
 }
@@ -88,10 +100,12 @@ white_button.addEventListener('click', async () => {
     white_button.style.display = "none";
     black_button.style.display = "none";
 
+    var pos = chess.fen();
     if (textbox.value != "")
     {
       chess.load(textbox.value);
       board.position(textbox.value);
+      pos = textbox.value;
     }
 
     if (!chess.isGameOver())
@@ -107,7 +121,7 @@ white_button.addEventListener('click', async () => {
 
       if (turn == "black")
       {
-        playEngineMove();
+        playEngineMove(pos);
         await delay(500);
         board.position(chess.fen());
       }
@@ -121,10 +135,12 @@ black_button.addEventListener('click', async () => {
     white_button.style.display = "none";
     black_button.style.display = "none";
 
+    var pos = chess.fen();
     if (textbox.value != "")
     {
       chess.load(textbox.value);
       board.position(textbox.value);
+      pos = textbox.value;
     }
 
     if (!chess.isGameOver())
@@ -142,7 +158,7 @@ black_button.addEventListener('click', async () => {
     if (turn == "white")
     {
       await delay(500);
-      playEngineMove();
+      playEngineMove(pos);
       await delay(500);
       board.position(chess.fen());
     }
@@ -151,7 +167,7 @@ black_button.addEventListener('click', async () => {
 });
 
 
-async function fetchEngineMove() {
+async function fetchEngineMove(pos) {
   let data;
   try {
         const response = await fetch("http://127.0.0.1:8080/data", {
@@ -160,7 +176,7 @@ async function fetchEngineMove() {
             "Content-Type": "text/plain"
           },
 
-          body: chess.fen()
+          body: pos
         });
         
         if (!response.ok) {
@@ -178,17 +194,17 @@ async function fetchEngineMove() {
 }
 
 async function parseMove() {
-  const move = await fetchEngineMove();
+  const move = await fetchEngineMove(pos);
   return move.toString();
 }
 
-function playEngineMove() {
+function playEngineMove(pos) {
   let engineMove;
   let start;
   let end;
   let promote;
 
-  fetchEngineMove().then((move) => {
+  fetchEngineMove(pos).then((move) => {
     engineMove = move.toString();
     console.log(engineMove);
     start = engineMove.substring(0, 2);

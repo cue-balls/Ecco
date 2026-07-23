@@ -44,6 +44,7 @@ GameState::GameState(std::string FEN) : bitboards(14), white_to_move(true) {
         mailbox.push_back(255);
     }
 
+
     //board setup
     int square = 0;
     for (i = 0; i < FEN.size(); i++)
@@ -86,6 +87,7 @@ GameState::GameState(std::string FEN) : bitboards(14), white_to_move(true) {
             square += empty;
         }
     }
+
 
     if (i >= FEN.size()) {
         return;
@@ -141,11 +143,10 @@ GameState::GameState(std::string FEN) : bitboards(14), white_to_move(true) {
         current_state.en_passant_square = square_to_int(en_passant);
     }
     
-    current_state.en_passant_square = 43;
     state_stack.push_back(current_state);
 
 
-
+    //initial hashing of position
     hash_key = 0;
     for (int square = 0; square < 64; square++)
     {
@@ -226,9 +227,12 @@ void GameState::make_move(std::uint16_t move)
 
     //color shift is used to differentiate between active and inactive player
     //bitboards[x + color_shift] represents piece x of the active player
+    //adjusted values for easy hashing
     std::uint8_t adjusted_move_id = moving_piece;
     std::uint8_t adjusted_capture_id = capture;
     std::uint8_t adjusted_color_shift = 0;
+
+
     std::uint8_t color_shift = 0;
     if (moving_piece > 6) 
     {
@@ -269,9 +273,10 @@ void GameState::make_move(std::uint16_t move)
         }
     }
 
+    
+
     hash_key ^= zobrist_keys[777 + castling];
     if (state_stack[state_stack.size() - 1].en_passant_square != 255) {
-        //std::cout << "a" << std::endl;
         hash_key ^= zobrist_keys[769 + state_stack[state_stack.size() - 1].en_passant_square % 8];
     }
 
@@ -290,7 +295,7 @@ void GameState::make_move(std::uint16_t move)
     if (special_move_data == 1) //setting en passant flag
     {
         en_passant = (target_square + from_square) / 2;
-        hash_key ^= zobrist_keys[769 + ((from_square + target_square) / 2) % 8];
+        hash_key ^= zobrist_keys[769 + from_square % 8];
     }
     else if (special_move_data == 5) //en passant capture
     {
@@ -449,6 +454,8 @@ void GameState::unmake_move(std::uint16_t move)
     std::uint8_t adjusted_capture_id = capture;
     std::uint8_t adjusted_color_shift = 0;
     std::uint8_t color_shift = 0;
+    
+    
     if (moving_piece > 6) 
     {
         color_shift = 7;
@@ -467,8 +474,9 @@ void GameState::unmake_move(std::uint16_t move)
     hash_key ^= zobrist_keys[777 + undo.castling_rights];
     hash_key ^= zobrist_keys[777 + state_stack[state_stack.size() - 1].castling_rights];
     
+
+
     if (undo.en_passant_square != 255) {
-        //std::cout << "c" << std::endl;
         hash_key ^= zobrist_keys[769 + undo.en_passant_square % 8];
     }
 
@@ -698,6 +706,13 @@ void GameState::populate_attacks()
 
 void GameState::generate_hash_keys()
 {
+    //this project uses zobrist hashing in order to maintain a transposition table
+    //instead of hashing each individual position there is one hash key that is maintained throughout the object's lifespan
+    //12 * 64 values for each piece on each square
+    //1 value for turn order
+    //8 values for the column of en passant if any
+    //16 values for castling rights (could get away with just 4 but 16 is faster)
+
     zobrist_keys = std::vector<std::uint64_t>(793);
     std::uint64_t seed = 422715260;
     std::mt19937_64 gen64(seed);
@@ -713,7 +728,10 @@ void GameState::generate_hash_keys()
 
 
 
-
+//this function was initially designed with software prefetching in mind
+//since the transposition table is as big as it is the cache is frequently missed
+//I thought prefetching would mitigate this but it seems to either not affect or slightly worsen performance
+//this might be because of the time it takes to get the hash preview but I have no idea how to make this function faster
 std::uint64_t GameState::get_hash_preview(std::uint16_t move)
 {
     UndoState undo = state_stack[state_stack.size() - 1];
@@ -721,16 +739,16 @@ std::uint64_t GameState::get_hash_preview(std::uint16_t move)
     std::uint8_t from_square = move & 63;
     std::uint8_t target_square = (move >> 6) & 63;
     std::uint8_t special_move_data = (move >> 12) & 15;
-    std::uint8_t capture = undo.captured_piece;
-    std::uint8_t moving_piece = mailbox[target_square];
     std::uint8_t castling = undo.castling_rights;
     std::uint8_t next_hash = hash_key;
 
-    std::uint8_t adjusted_move_id = moving_piece;
-    std::uint8_t adjusted_capture_id = capture;
+    std::uint8_t adjusted_move_id = mailbox[from_square];
+    std::uint8_t adjusted_capture_id = mailbox[target_square];
     std::uint8_t adjusted_color_shift = 0;
     std::uint8_t color_shift = 0;
-    if (moving_piece > 6) 
+    
+    
+    if (adjusted_move_id >= 6) 
     {
         color_shift = 7;
         adjusted_color_shift = 6;
@@ -768,10 +786,13 @@ std::uint64_t GameState::get_hash_preview(std::uint16_t move)
         }
     }
 
+
+
     next_hash ^= zobrist_keys[777 + castling];
     if (state_stack[state_stack.size() - 1].en_passant_square != 255) {
         next_hash ^= zobrist_keys[769 + state_stack[state_stack.size() - 1].en_passant_square % 8];
     }
+
 
 
     if (special_move_data == 1) //setting en passant flag
@@ -780,7 +801,7 @@ std::uint64_t GameState::get_hash_preview(std::uint16_t move)
     }
     else if (special_move_data == 5) //en passant capture
     {
-        if (moving_piece == 0)
+        if (adjusted_move_id= 0)
         {
             next_hash ^= zobrist_keys[6 * 64 + target_square + 8];
         }
@@ -819,6 +840,7 @@ std::uint64_t GameState::get_hash_preview(std::uint16_t move)
             next_hash ^= zobrist_keys[9 * 64];
         }
     }
+
 
 
 
@@ -874,12 +896,12 @@ std::uint64_t GameState::get_hash_preview(std::uint16_t move)
 
 bool GameState::in_check(bool white)
 {
-    int color_shift = 0;
+    std::uint8_t color_shift = 0;
     if (!white) {
         color_shift = 7;
     }
 
-    int king_square = bitscan_forward(bitboards[5 + color_shift]);
+    std::uint8_t king_square = bitscan_forward(bitboards[5 + color_shift]);
 
     //when searching for checks, we can imagine the king is another piece and look at where that piece would attack
     //those squares can then be checked to see if that piece is there
@@ -1256,7 +1278,7 @@ std::vector<std::uint16_t> GameState::get_legal_moves()
     }
     else
     {
-        castling = (undo.castling_rights >> 2) & 3;
+        castling = undo.castling_rights & 12;
     }
 
 
@@ -1283,6 +1305,9 @@ std::vector<std::uint16_t> GameState::get_legal_moves()
     return legal_moves;
 }
 
+
+
+
 bool GameState::validate_move(std::uint16_t move)
 {
     make_move(move);
@@ -1291,10 +1316,13 @@ bool GameState::validate_move(std::uint16_t move)
     return validate;
 }
 
+
+
+
 bool GameState::kingside_eligibility()
 {
-    int castle_shift = 0;
-    int color_shift = 7;
+    std::uint8_t castle_shift = 0;
+    std::uint8_t color_shift = 7;
     
     if (white_to_move) {
         castle_shift = 56;
@@ -1325,17 +1353,14 @@ bool GameState::kingside_eligibility()
     //check handling
     for (int i = 4 + castle_shift; i < 7 + castle_shift; i++)
     {
-        bitboards[5 + color_shift] = clear(bitboards[5 + color_shift], 4 + castle_shift);
-        bitboards[5 + color_shift] = set(bitboards[5 + color_shift], i);
+        bitboards[5 + color_shift] ^= ((1ULL << 4 + castle_shift) | (1ULL << i));
 
         if (in_check(white_to_move)) {
-            bitboards[5 + color_shift] = clear(bitboards[5 + color_shift], i);
-            bitboards[5 + color_shift] = set(bitboards[5 + color_shift], 4 + castle_shift);
+            bitboards[5 + color_shift] ^= ((1ULL << 4 + castle_shift) | (1ULL << i));
             return false;
         }
 
-        bitboards[5 + color_shift] = clear(bitboards[5 + color_shift], i);
-        bitboards[5 + color_shift] = set(bitboards[5 + color_shift], 4 + castle_shift);
+        bitboards[5 + color_shift] ^= ((1ULL << 4 + castle_shift) | (1ULL << i));
     }
 
 
@@ -1382,17 +1407,14 @@ bool GameState::queenside_eligibility()
     //check handling
     for (int i = 2 + castle_shift; i < 5 + castle_shift; i++)
     {
-        bitboards[5 + color_shift] = clear(bitboards[5 + color_shift], 4 + castle_shift);
-        bitboards[5 + color_shift] = set(bitboards[5 + color_shift], i);
+        bitboards[5 + color_shift] ^= ((1ULL << 4 + castle_shift) | (1ULL << i));
 
         if (in_check(white_to_move)) {
-            bitboards[5 + color_shift] = clear(bitboards[5 + color_shift], i);
-            bitboards[5 + color_shift] = set(bitboards[5 + color_shift], 4 + castle_shift);
+            bitboards[5 + color_shift] ^= ((1ULL << 4 + castle_shift) | (1ULL << i));
             return false;
         }
 
-        bitboards[5 + color_shift] = clear(bitboards[5 + color_shift], i);
-        bitboards[5 + color_shift] = set(bitboards[5 + color_shift], 4 + castle_shift);
+        bitboards[5 + color_shift] ^= ((1ULL << 4 + castle_shift) | (1ULL << i));
     }
 
 
