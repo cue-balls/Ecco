@@ -25,6 +25,7 @@
 #include <cctype>
 #include "GameState.h"
 #include "bitwise.h"
+#include "PST.h"
 
 
 
@@ -35,6 +36,13 @@
 //on each move js will determine the FEN string for the current position and send it to the backend
 //this constructor serves to recreate the gamestate
 GameState::GameState(std::string FEN) : bitboards(14), white_to_move(true) {
+    white_opening_PST = 0;
+    white_mg_PST = 0;
+    white_eg_PST = 0;
+    black_opening_PST = 0;
+    black_mg_PST = 0;
+    black_eg_PST = 0;
+    
     int i;
     for (i = 0; i < 14; i++) {
         bitboards[i] = 0;
@@ -67,6 +75,21 @@ GameState::GameState(std::string FEN) : bitboards(14), white_to_move(true) {
                 {
                     bitboards[j] = set(bitboards[j], square);
                     mailbox[square] = j;
+
+                    if (std::isupper(c))
+                    {
+                        white_opening_PST += PST[0][j][square];
+                        white_mg_PST += PST[1][j][square];
+                        white_eg_PST += PST[2][j][square];
+                    }
+                    else
+                    {
+                        black_opening_PST += PST[0][j][square];
+                        black_mg_PST += PST[1][j][square];
+                        black_eg_PST += PST[2][j][square];
+                    }
+                    
+
                     if (std::isupper(c))
                     {
                         bitboards[6] = set(bitboards[6], square);
@@ -286,6 +309,26 @@ void GameState::make_move(std::uint16_t move)
     mailbox[target_square] = moving_piece;
     mailbox[from_square] = 255;
 
+    if (moving_piece < 6)
+    {
+        white_opening_PST -= PST[0][moving_piece][from_square];
+        white_opening_PST += PST[0][moving_piece][target_square];
+        white_mg_PST -= PST[1][moving_piece][from_square];
+        white_mg_PST += PST[1][moving_piece][target_square];
+        white_eg_PST -= PST[2][moving_piece][from_square];
+        white_eg_PST += PST[2][moving_piece][target_square];
+    }
+    else
+    {
+        black_opening_PST -= PST[0][moving_piece][from_square];
+        black_opening_PST += PST[0][moving_piece][target_square];
+        black_mg_PST -= PST[1][moving_piece][from_square];
+        black_mg_PST += PST[1][moving_piece][target_square];
+        black_eg_PST -= PST[2][moving_piece][from_square];
+        black_eg_PST += PST[2][moving_piece][target_square];
+    }
+
+
 
     bitboards[6 + color_shift] = clear(bitboards[6 + color_shift], from_square);
     bitboards[6 + color_shift] = set(bitboards[6 + color_shift], target_square);
@@ -304,6 +347,11 @@ void GameState::make_move(std::uint16_t move)
             bitboards[7] = clear(bitboards[7], target_square + 8);
             bitboards[13] = clear(bitboards[13], target_square + 8);
             mailbox[target_square + 8] = 255;
+
+            black_opening_PST -= PST[0][7][target_square + 8];
+            black_mg_PST -= PST[1][7][target_square + 8];
+            black_eg_PST -= PST[2][7][target_square + 8];
+
             capture = 7;
             hash_key ^= zobrist_keys[6 * 64 + target_square + 8];
         }
@@ -312,15 +360,33 @@ void GameState::make_move(std::uint16_t move)
             bitboards[0] = clear(bitboards[0], target_square - 8);
             bitboards[6] = clear(bitboards[6], target_square - 8);
             mailbox[target_square - 8] = 255;
+
+            white_opening_PST -= PST[0][0][target_square - 8];
+            white_mg_PST -= PST[1][0][target_square - 8];
+            white_eg_PST -= PST[2][0][target_square - 8];
+
             capture = 0;
             hash_key ^= zobrist_keys[target_square - 8];
         }
     }
     else if (read(special_move_data, 2))
     {
-        
         bitboards[capture] = clear(bitboards[capture], target_square);
         bitboards[13 - color_shift] = clear(bitboards[13 - color_shift], target_square);
+
+        if (capture < 6)
+        {
+            white_opening_PST -= PST[0][capture][target_square];
+            white_mg_PST -= PST[1][capture][target_square];
+            white_eg_PST -= PST[2][capture][target_square];
+        }
+        else
+        {
+            black_opening_PST -= PST[0][capture][target_square];
+            black_mg_PST -= PST[0][capture][target_square];
+            black_eg_PST -= PST[0][capture][target_square];
+        }
+
         hash_key ^= zobrist_keys[adjusted_capture_id * 64 + target_square];
     }
     else if (special_move_data == 2) 
@@ -334,6 +400,14 @@ void GameState::make_move(std::uint16_t move)
             bitboards[6] = clear(bitboards[6], 63);
             mailbox[63] = 255;
             mailbox[61] = 3;
+
+            white_opening_PST -= PST[0][3][63];
+            white_opening_PST += PST[0][3][61];
+            white_mg_PST -= PST[1][3][63];
+            white_mg_PST += PST[1][3][61];
+            white_eg_PST -= PST[2][3][63];
+            white_eg_PST += PST[2][3][61];
+
             hash_key ^= zobrist_keys[3 * 64 + 61];
             hash_key ^= zobrist_keys[3 * 64 + 63];
         }
@@ -344,6 +418,14 @@ void GameState::make_move(std::uint16_t move)
             bitboards[13] = clear(bitboards[13], 7);
             mailbox[7] = 255;
             mailbox[5] = 10;
+
+            black_opening_PST -= PST[0][10][7];
+            black_opening_PST += PST[0][10][5];
+            black_mg_PST -= PST[1][10][7];
+            black_mg_PST += PST[1][10][5];
+            black_eg_PST -= PST[2][10][7];
+            black_eg_PST += PST[2][10][5];
+
             hash_key ^= zobrist_keys[9 * 64 + 5];
             hash_key ^= zobrist_keys[9 * 64 + 7];
         }
@@ -357,6 +439,14 @@ void GameState::make_move(std::uint16_t move)
             bitboards[6] = clear(bitboards[6], 56);
             mailbox[56] = 255;
             mailbox[59] = 3;
+
+            white_opening_PST -= PST[0][3][56];
+            white_opening_PST += PST[0][3][59];
+            white_mg_PST -= PST[1][3][56];
+            white_mg_PST += PST[1][3][59];
+            white_eg_PST -= PST[2][3][56];
+            white_eg_PST += PST[2][3][59];
+
             hash_key ^= zobrist_keys[3 * 64 + 59];
             hash_key ^= zobrist_keys[3 * 64 + 56];
         }
@@ -367,6 +457,14 @@ void GameState::make_move(std::uint16_t move)
             bitboards[13] = clear(bitboards[13], 0);
             mailbox[0] = 255;
             mailbox[3] = 10;
+
+            black_opening_PST -= PST[0][10][0];
+            black_opening_PST += PST[0][10][3];
+            black_mg_PST -= PST[1][10][0];
+            black_mg_PST += PST[1][10][3];
+            black_eg_PST -= PST[2][10][0];
+            black_eg_PST += PST[2][10][3];
+
             hash_key ^= zobrist_keys[9 * 64 + 3];
             hash_key ^= zobrist_keys[9 * 64];
         }
@@ -387,6 +485,20 @@ void GameState::make_move(std::uint16_t move)
                 bitboards[0 + color_shift] = clear(bitboards[0 + color_shift], target_square);
                 bitboards[1 + color_shift] = set(bitboards[1 + color_shift], target_square);
                 mailbox[target_square] = 1 + color_shift;
+
+                if (moving_piece < 6)
+                {
+                    white_opening_PST += PST[0][1][target_square];
+                    white_mg_PST += PST[1][1][target_square];
+                    white_eg_PST += PST[2][1][target_square];
+                }
+                else
+                {
+                    black_opening_PST += PST[0][8][target_square];
+                    black_mg_PST += PST[1][8][target_square];
+                    black_eg_PST += PST[2][8][target_square];
+                }
+
                 hash_key ^= zobrist_keys[adjusted_color_shift * 64 + target_square];
                 hash_key ^= zobrist_keys[(1 + adjusted_color_shift) * 64 + target_square];
                 break;
@@ -397,6 +509,20 @@ void GameState::make_move(std::uint16_t move)
                 bitboards[0 + color_shift] = clear(bitboards[0 + color_shift], target_square);
                 bitboards[2 + color_shift] = set(bitboards[2 + color_shift], target_square);
                 mailbox[target_square] = 2 + color_shift;
+
+                if (moving_piece < 6)
+                {
+                    white_opening_PST += PST[0][2][target_square];
+                    white_mg_PST += PST[1][2][target_square];
+                    white_eg_PST += PST[2][2][target_square];
+                }
+                else
+                {
+                    black_opening_PST += PST[0][9][target_square];
+                    black_mg_PST += PST[1][9][target_square];
+                    black_eg_PST += PST[2][9][target_square];
+                }
+
                 hash_key ^= zobrist_keys[adjusted_color_shift * 64 + target_square];
                 hash_key ^= zobrist_keys[(2 + adjusted_color_shift) * 64 + target_square];
                 break;
@@ -407,6 +533,20 @@ void GameState::make_move(std::uint16_t move)
                 bitboards[0 + color_shift] = clear(bitboards[0 + color_shift], target_square);
                 bitboards[3 + color_shift] = set(bitboards[3 + color_shift], target_square);
                 mailbox[target_square] = 3 + color_shift;
+
+                if (moving_piece < 6)
+                {
+                    white_opening_PST += PST[0][3][target_square];
+                    white_mg_PST += PST[1][3][target_square];
+                    white_eg_PST += PST[2][3][target_square];
+                }
+                else
+                {
+                    black_opening_PST += PST[0][10][target_square];
+                    black_mg_PST += PST[1][10][target_square];
+                    black_eg_PST += PST[2][10][target_square];
+                }
+
                 hash_key ^= zobrist_keys[adjusted_color_shift * 64 + target_square];
                 hash_key ^= zobrist_keys[(3 + adjusted_color_shift) * 64 + target_square];
                 break;
@@ -417,6 +557,20 @@ void GameState::make_move(std::uint16_t move)
                 bitboards[0 + color_shift] = clear(bitboards[0 + color_shift], target_square);
                 bitboards[4 + color_shift] = set(bitboards[4 + color_shift], target_square);
                 mailbox[target_square] = 4 + color_shift;
+
+                if (moving_piece < 6)
+                {
+                    white_opening_PST += PST[0][4][target_square];
+                    white_mg_PST += PST[1][4][target_square];
+                    white_eg_PST += PST[2][4][target_square];
+                }
+                else
+                {
+                    black_opening_PST += PST[0][11][target_square];
+                    black_mg_PST += PST[1][11][target_square];
+                    black_eg_PST += PST[2][11][target_square];
+                }
+
                 hash_key ^= zobrist_keys[adjusted_color_shift * 64 + target_square];
                 hash_key ^= zobrist_keys[(4 + adjusted_color_shift) * 64 + target_square];
                 break;
@@ -491,6 +645,27 @@ void GameState::unmake_move(std::uint16_t move)
     mailbox[from_square] = moving_piece;
     mailbox[target_square] = 255;
 
+
+    if (moving_piece < 6)
+    {
+        white_opening_PST -= PST[0][moving_piece][target_square];
+        white_opening_PST += PST[0][moving_piece][from_square];
+        white_mg_PST -= PST[1][moving_piece][target_square];
+        white_mg_PST += PST[1][moving_piece][from_square];
+        white_eg_PST -= PST[2][moving_piece][target_square];
+        white_eg_PST += PST[2][moving_piece][from_square];
+    }
+    else
+    {
+        black_opening_PST -= PST[0][moving_piece][target_square];
+        black_opening_PST += PST[0][moving_piece][from_square];
+        black_mg_PST -= PST[1][moving_piece][target_square];
+        black_mg_PST += PST[1][moving_piece][from_square];
+        black_eg_PST -= PST[2][moving_piece][target_square];
+        black_eg_PST += PST[2][moving_piece][from_square];
+    }
+
+
     bitboards[6 + color_shift] = clear(bitboards[6 + color_shift], target_square);
     bitboards[6 + color_shift] = set(bitboards[6 + color_shift], from_square);
 
@@ -508,6 +683,11 @@ void GameState::unmake_move(std::uint16_t move)
             bitboards[7] = set(bitboards[7], target_square + 8);
             bitboards[13] = set(bitboards[13], target_square + 8);
             mailbox[target_square + 8] = 7;
+
+            black_opening_PST += PST[0][7][target_square + 8];
+            black_mg_PST += PST[1][7][target_square + 8];
+            black_eg_PST += PST[2][7][target_square + 8];
+
             hash_key ^= zobrist_keys[6 * 64 + target_square + 8];
         }
         else
@@ -515,6 +695,11 @@ void GameState::unmake_move(std::uint16_t move)
             bitboards[0] = set(bitboards[0], target_square - 8);
             bitboards[6] = set(bitboards[6], target_square - 8);
             mailbox[target_square - 8] = 0;
+
+            white_opening_PST += PST[0][0][target_square - 8];
+            white_mg_PST += PST[1][0][target_square - 8];
+            white_eg_PST += PST[2][0][target_square - 8];
+
             hash_key ^= zobrist_keys[target_square - 8];
         }
     }
@@ -523,6 +708,20 @@ void GameState::unmake_move(std::uint16_t move)
         bitboards[capture] = set(bitboards[capture], target_square);
         bitboards[13 - color_shift] = set(bitboards[13 - color_shift], target_square);
         mailbox[target_square] = capture;
+
+        if (capture < 6)
+        {
+            white_opening_PST += PST[0][capture][target_square];
+            white_mg_PST += PST[1][capture][target_square];
+            white_eg_PST += PST[2][capture][target_square];
+        }
+        else
+        {
+            black_opening_PST += PST[0][capture][target_square];
+            black_mg_PST += PST[1][capture][target_square];
+            black_eg_PST += PST[2][capture][target_square];
+        }
+
         hash_key ^= zobrist_keys[adjusted_capture_id * 64 + target_square];
     }
     else if (special_move_data == 2) //putting rooks back if move is a castle
@@ -534,6 +733,15 @@ void GameState::unmake_move(std::uint16_t move)
             bitboards[6] = clear(bitboards[6], 61);
             mailbox[61] = 255;
             mailbox[63] = 3;
+
+            white_opening_PST -= PST[0][3][61];
+            white_opening_PST += PST[0][3][63];
+            white_mg_PST -= PST[1][3][61];
+            white_mg_PST += PST[1][3][63];
+            white_eg_PST -= PST[2][3][61];
+            white_eg_PST += PST[2][3][63];
+            
+
             hash_key ^= zobrist_keys[3 * 64 + 61];
             hash_key ^= zobrist_keys[3 * 64 + 63];
         }
@@ -544,6 +752,14 @@ void GameState::unmake_move(std::uint16_t move)
             bitboards[13] = clear(bitboards[13], 5);
             mailbox[5] = 255;
             mailbox[7] = 10;
+
+            black_opening_PST -= PST[0][10][5];
+            black_opening_PST += PST[0][10][7];
+            black_mg_PST -= PST[1][10][5];
+            black_mg_PST += PST[1][10][7];
+            black_eg_PST -= PST[2][10][5];
+            black_eg_PST += PST[2][10][7];
+
             hash_key ^= zobrist_keys[9 * 64 + 5];
             hash_key ^= zobrist_keys[9 * 64 + 7];
         }
@@ -557,6 +773,14 @@ void GameState::unmake_move(std::uint16_t move)
             bitboards[6] = clear(bitboards[6], 59);
             mailbox[59] = 255;
             mailbox[56] = 3;
+
+            white_opening_PST -= PST[0][3][59];
+            white_opening_PST += PST[0][3][56];
+            white_mg_PST -= PST[1][3][59];
+            white_mg_PST += PST[1][3][56];
+            white_eg_PST -= PST[2][3][59];
+            white_eg_PST += PST[2][3][56];
+
             hash_key ^= zobrist_keys[3 * 64 + 59];
             hash_key ^= zobrist_keys[3 * 64 + 56];
         }
@@ -567,6 +791,14 @@ void GameState::unmake_move(std::uint16_t move)
             bitboards[13] = clear(bitboards[13], 3);
             mailbox[3] = 255;
             mailbox[0] = 10;
+
+            black_opening_PST -= PST[0][10][3];
+            black_opening_PST += PST[0][10][0];
+            black_mg_PST -= PST[1][10][3];
+            black_mg_PST += PST[1][10][0];
+            black_eg_PST -= PST[2][10][3];
+            black_eg_PST += PST[2][10][0];
+
             hash_key ^= zobrist_keys[9 * 64 + 3];
             hash_key ^= zobrist_keys[9 * 64];
         }
@@ -584,6 +816,26 @@ void GameState::unmake_move(std::uint16_t move)
                 bitboards[0 + color_shift] = set(bitboards[0 + color_shift], from_square);
                 bitboards[1 + color_shift] = clear(bitboards[1 + color_shift], from_square);
                 mailbox[from_square] = color_shift;
+
+                if (moving_piece < 6)
+                {
+                    white_opening_PST -= PST[0][1][from_square];
+                    white_opening_PST += PST[0][0][from_square];
+                    white_mg_PST -= PST[1][1][from_square];
+                    white_mg_PST += PST[1][0][from_square];
+                    white_eg_PST -= PST[2][1][from_square];
+                    white_eg_PST += PST[2][0][from_square];
+                }
+                else
+                {
+                    black_opening_PST -= PST[0][8][from_square];
+                    black_opening_PST += PST[0][7][from_square];
+                    black_mg_PST -= PST[1][8][from_square];
+                    black_mg_PST += PST[1][7][from_square];
+                    black_eg_PST -= PST[2][8][from_square];
+                    black_eg_PST += PST[2][7][from_square];
+                }
+
                 hash_key ^= zobrist_keys[adjusted_color_shift * 64 + from_square];
                 hash_key ^= zobrist_keys[(1 + adjusted_color_shift) * 64 + from_square];
                 break;
@@ -592,6 +844,26 @@ void GameState::unmake_move(std::uint16_t move)
                 bitboards[0 + color_shift] = set(bitboards[0 + color_shift], from_square);
                 bitboards[2 + color_shift] = clear(bitboards[2 + color_shift], from_square);
                 mailbox[from_square] = color_shift;
+
+                if (moving_piece < 6)
+                {
+                    white_opening_PST -= PST[0][2][from_square];
+                    white_opening_PST += PST[0][0][from_square];
+                    white_mg_PST -= PST[1][2][from_square];
+                    white_mg_PST += PST[1][0][from_square];
+                    white_eg_PST -= PST[2][2][from_square];
+                    white_eg_PST += PST[2][0][from_square];
+                }
+                else
+                {
+                    black_opening_PST -= PST[0][9][from_square];
+                    black_opening_PST += PST[0][7][from_square];
+                    black_mg_PST -= PST[1][9][from_square];
+                    black_mg_PST += PST[1][7][from_square];
+                    black_eg_PST -= PST[2][9][from_square];
+                    black_eg_PST += PST[2][7][from_square];
+                }
+
                 hash_key ^= zobrist_keys[adjusted_color_shift * 64 + from_square];
                 hash_key ^= zobrist_keys[(2 + adjusted_color_shift) * 64 + from_square];
                 break;
@@ -600,6 +872,26 @@ void GameState::unmake_move(std::uint16_t move)
                 bitboards[0 + color_shift] = set(bitboards[0 + color_shift], from_square);
                 bitboards[3 + color_shift] = clear(bitboards[3 + color_shift], from_square);
                 mailbox[from_square] = color_shift;
+
+                if (moving_piece < 6)
+                {
+                    white_opening_PST -= PST[0][3][from_square];
+                    white_opening_PST += PST[0][0][from_square];
+                    white_mg_PST -= PST[1][3][from_square];
+                    white_mg_PST += PST[1][0][from_square];
+                    white_eg_PST -= PST[2][3][from_square];
+                    white_eg_PST += PST[2][0][from_square];
+                }
+                else
+                {
+                    black_opening_PST -= PST[0][10][from_square];
+                    black_opening_PST += PST[0][7][from_square];
+                    black_mg_PST -= PST[1][10][from_square];
+                    black_mg_PST += PST[1][7][from_square];
+                    black_eg_PST -= PST[2][10][from_square];
+                    black_eg_PST += PST[2][7][from_square];
+                }
+
                 hash_key ^= zobrist_keys[adjusted_color_shift * 64 + from_square];
                 hash_key ^= zobrist_keys[(3 + adjusted_color_shift) * 64 + from_square];
                 break;
@@ -608,6 +900,27 @@ void GameState::unmake_move(std::uint16_t move)
                 bitboards[0 + color_shift] = set(bitboards[0 + color_shift], from_square);
                 bitboards[4 + color_shift] = clear(bitboards[4 + color_shift], from_square);
                 mailbox[from_square] = color_shift;
+
+
+                if (moving_piece < 6)
+                {
+                    white_opening_PST -= PST[0][4][from_square];
+                    white_opening_PST += PST[0][0][from_square];
+                    white_mg_PST -= PST[1][4][from_square];
+                    white_mg_PST += PST[1][0][from_square];
+                    white_eg_PST -= PST[2][4][from_square];
+                    white_eg_PST += PST[2][0][from_square];
+                }
+                else
+                {
+                    black_opening_PST -= PST[0][11][from_square];
+                    black_opening_PST += PST[0][7][from_square];
+                    black_mg_PST -= PST[1][11][from_square];
+                    black_mg_PST += PST[1][7][from_square];
+                    black_eg_PST -= PST[2][11][from_square];
+                    black_eg_PST += PST[2][7][from_square];
+                }
+
                 hash_key ^= zobrist_keys[adjusted_color_shift * 64 + from_square];
                 hash_key ^= zobrist_keys[(4 + adjusted_color_shift) * 64 + from_square];
                 break;
@@ -628,10 +941,6 @@ void GameState::unmake_move(std::uint16_t move)
 
 void GameState::populate_attacks()
 {
-    for (int i = 0; i < 5; i++) {
-        piece_attacks.push_back(std::vector<std::uint64_t>(64));
-    }
-
     std::uint64_t rays = 0;
     for (int square = 0; square < 64; square++)
     {
@@ -907,6 +1216,7 @@ bool GameState::in_check(bool white)
     //those squares can then be checked to see if that piece is there
 
 
+    //rook/queen checks
     std::uint64_t ray = piece_attacks[2][king_square];
     ray = occlude_north(ray, bitboards[6] | bitboards[13], king_square);
     ray = occlude_east(ray, bitboards[6] | bitboards[13], king_square);
@@ -918,7 +1228,7 @@ bool GameState::in_check(bool white)
         return true;
     }
 
-
+    //bishop/queen checks
     ray = piece_attacks[1][king_square];
     ray = occlude_northeast(ray, bitboards[6] | bitboards[13], king_square);
     ray = occlude_northwest(ray, bitboards[6] | bitboards[13], king_square);
@@ -926,23 +1236,26 @@ bool GameState::in_check(bool white)
     ray = occlude_southwest(ray, bitboards[6] | bitboards[13], king_square);
     ray &= (bitboards[9 - color_shift] | bitboards[11 - color_shift]);
 
+
     if (ray) {
         return true;
     }
 
 
-    //searching for knight checks
+    //knight checks
     ray = piece_attacks[0][king_square] & bitboards[8 - color_shift];
     if (ray) {
         return true;
     }
 
-    
+    //king checks
     ray = piece_attacks[4][king_square] & bitboards[12 - color_shift];
     if (ray) {
         return true;
     }
 
+
+    //pawn checks
     if (white)
     {
         if (read((bitboards[7] << 7) & ~Bitwise::HFILE, king_square) || read((bitboards[7] << 9) & ~Bitwise::AFILE, king_square)) {
@@ -991,6 +1304,8 @@ std::vector<std::uint16_t> GameState::get_legal_moves()
     std::vector<std::uint8_t> attacks;
     std::uint16_t move = 0;
 
+
+    //knight moves
     for (std::uint8_t p : pieces)
     {
         std::uint64_t rays = piece_attacks[0][p] & ~bitboards[6 + color_shift];
@@ -1003,12 +1318,16 @@ std::vector<std::uint16_t> GameState::get_legal_moves()
                 move |= (1 << 14);
             }
 
+
             if (validate_move(move)) {
                 legal_moves.push_back(move);
             }
         }
     }
 
+
+
+    //bishop moves
     pieces = serialize(bitboards[2 + color_shift]);
     for (std::uint8_t p : pieces)
     {
@@ -1028,12 +1347,16 @@ std::vector<std::uint16_t> GameState::get_legal_moves()
                 move |= (1 << 14);
             }
 
+
             if (validate_move(move)) {
                 legal_moves.push_back(move);
             }
         }
     }
 
+
+
+    //rook moves
     pieces = serialize(bitboards[3 + color_shift]);
     for (std::uint8_t p : pieces)
     {
@@ -1053,12 +1376,16 @@ std::vector<std::uint16_t> GameState::get_legal_moves()
                 move |= (1 << 14);
             }
 
+
             if (validate_move(move)) {
                 legal_moves.push_back(move);
             }
         }
     }
 
+
+
+    //queen moves
     pieces = serialize(bitboards[4 + color_shift]);
     for (std::uint8_t p : pieces)
     {
@@ -1082,14 +1409,17 @@ std::vector<std::uint16_t> GameState::get_legal_moves()
                 move |= (1 << 14);
             }
 
+
             if (validate_move(move)) {
                 legal_moves.push_back(move);
             }
         }
     }
 
-    pieces = serialize(bitboards[5 + color_shift]);
 
+
+    //king moves
+    pieces = serialize(bitboards[5 + color_shift]);
     for (std::uint8_t p : pieces)
     {
         attacks = serialize(piece_attacks[4][p] & ~bitboards[6 + color_shift]);
@@ -1101,6 +1431,7 @@ std::vector<std::uint16_t> GameState::get_legal_moves()
                 move |= (1 << 14);
             }
 
+
             if (validate_move(move)) {
                 legal_moves.push_back(move);
             }
@@ -1108,12 +1439,15 @@ std::vector<std::uint16_t> GameState::get_legal_moves()
     }
     
 
+
+    //pawn moves
     pieces = serialize(bitboards[0 + color_shift]);
     for (std::uint8_t p : pieces)
     {
         std::uint64_t rays = 0;
         if (white_to_move)
         {
+            //single pawn push
             if (!read(bitboards[6], p - 8) && !read(bitboards[13], p - 8)) {
                 move = ((p - 8) << 6) | p;
                 if (p > 15)
@@ -1124,6 +1458,7 @@ std::vector<std::uint16_t> GameState::get_legal_moves()
                 }
                 else
                 {
+                    //promotion handling
                     for (std::uint16_t i = 8; i < 12; i++)
                     {
                         move |= (i << 12);
@@ -1134,6 +1469,8 @@ std::vector<std::uint16_t> GameState::get_legal_moves()
                     }
                 }
 
+
+                //double pawn push
                 if (p / 8 == 6)
                 {
                     if (!read(bitboards[6], p - 16) && !read(bitboards[13], p - 16))
@@ -1147,10 +1484,14 @@ std::vector<std::uint16_t> GameState::get_legal_moves()
                 }
             }
 
+
+            //pawn captures
             rays |= (((1ULL << p) >> 7) & ~Bitwise::AFILE);
             rays |= (((1ULL << p) >> 9) & ~Bitwise::HFILE);
 
-            if (read(rays, undo.en_passant_square))
+
+            //en passant
+            if (undo.en_passant_square != 255 && read(rays, undo.en_passant_square))
             {
                 move = (undo.en_passant_square << 6) | p;
                 move |= (5 << 12);
@@ -1162,8 +1503,8 @@ std::vector<std::uint16_t> GameState::get_legal_moves()
             rays &= bitboards[13];
             
 
-            attacks = serialize(rays);
 
+            attacks = serialize(rays);
             for (std::uint8_t attack : attacks)
             {
                 move = (attack << 6) | p;
@@ -1176,6 +1517,7 @@ std::vector<std::uint16_t> GameState::get_legal_moves()
                 }
                 else
                 {
+                    //promotion handling
                     for (std::uint16_t i = 12; i < 16; i++)
                     {
                         move |= (i << 12);
@@ -1189,6 +1531,7 @@ std::vector<std::uint16_t> GameState::get_legal_moves()
         }
         else
         {
+            //single pawn push
             if (!read(bitboards[6], p + 8) && !read(bitboards[13], p + 8)) {
                 move = ((p + 8) << 6) | p;
                 if (p < 48)
@@ -1199,6 +1542,7 @@ std::vector<std::uint16_t> GameState::get_legal_moves()
                 }
                 else
                 {
+                    //promotion handling
                     for (std::uint16_t i = 8; i < 12; i++)
                     {
                         move |= (i << 12);
@@ -1209,6 +1553,8 @@ std::vector<std::uint16_t> GameState::get_legal_moves()
                     }
                 }
 
+
+                //double pawn push
                 if (p / 8 == 1)
                 {
                     if (!read(bitboards[6], p + 16) && !read(bitboards[13], p + 16))
@@ -1222,10 +1568,14 @@ std::vector<std::uint16_t> GameState::get_legal_moves()
                 }
             }
 
+
+            //pawn captures
             rays |= (((1ULL << p) << 7) & ~Bitwise::HFILE);
             rays |= (((1ULL << p) << 9) & ~Bitwise::AFILE);
 
-            if (read(rays, undo.en_passant_square))
+
+            //en passant
+            if (undo.en_passant_square != 255 && read(rays, undo.en_passant_square))
             {
                 move = (undo.en_passant_square << 6) | p;
                 move |= (5 << 12);
@@ -1237,8 +1587,8 @@ std::vector<std::uint16_t> GameState::get_legal_moves()
             rays &= bitboards[6];
 
 
-            attacks = serialize(rays);
 
+            attacks = serialize(rays);
             for (std::uint8_t attack : attacks)
             {
                 move = (attack << 6) | p;
@@ -1251,6 +1601,7 @@ std::vector<std::uint16_t> GameState::get_legal_moves()
                 }
                 else
                 {
+                    //promotion handling
                     for (std::uint16_t i = 12; i < 16; i++)
                     {
                         move |= (i << 12);
@@ -1371,8 +1722,8 @@ bool GameState::kingside_eligibility()
 
 bool GameState::queenside_eligibility()
 {
-    int castle_shift = 0;
-    int color_shift = 7;
+    std::uint8_t castle_shift = 0;
+    std::uint8_t color_shift = 7;
     
     if (white_to_move) {
         castle_shift = 56;

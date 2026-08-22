@@ -61,9 +61,11 @@ int main() {
         std::cout << "received" << std::endl;
 
         GameState * game = new GameState(req.body);
+        //std::cout << game->see(28, true) << std::endl;
+        //game->view_gamestate();
         std::vector<std::uint64_t> transposition_table(TABLE_SIZE, 0x8000000000000000);
         std::cout << req.body << std::endl;
-        std::cout << std::hex << game->hash_key << std::endl;
+        //std::cout << std::hex << game->hash_key << std::endl;
 
 
         std::vector<std::uint16_t> moves = game->get_legal_moves();
@@ -135,14 +137,14 @@ int main() {
 
                 alpha = std::max((int)alpha, (int)eval);
             }
-            std::cout << std::hex << game->hash_key << std::endl;
+            //std::cout << std::hex << game->hash_key << std::endl;
             std::cout << count << std::endl;
             count = 0;
             auto end = std::chrono::high_resolution_clock::now();
             std::chrono::duration<double, std::milli> elapsed = end - start;
             std::cout << elapsed << std::endl;
             //std::cout << count << std::endl;
-            //std::cout << (int)best_eval << std::endl;
+            std::cout << (int)best_eval << std::endl;
             
             //game->view_gamestate();
 
@@ -309,7 +311,30 @@ std::int16_t alpha_beta(GameState* state, std::int16_t alpha, std::int16_t beta,
 {
     //count++;
     if (depth == 0) {
-        return state->evaluate();
+        std::uint64_t inactive_player_composite;
+        if (state->white_to_move)
+        {
+            inactive_player_composite = state->bitboards[13] ^ state->bitboards[12];
+        }
+        else
+        {
+            inactive_player_composite = state->bitboards[6] ^ state->bitboards[5];
+        }
+
+        std::uint8_t square;
+        int hanging_material_bonus = 0;
+        while (inactive_player_composite)
+        {
+            square = bitscan_forward(inactive_player_composite);
+            inactive_player_composite = clear(inactive_player_composite, square);
+
+
+            int delta = state->see(square, state->white_to_move);
+            hanging_material_bonus = std::max(hanging_material_bonus, delta);
+        }
+
+
+        return state->evaluate() + hanging_material_bonus;
     }
     
     std::vector<std::uint16_t> legal_moves = state->get_legal_moves();
@@ -354,7 +379,20 @@ std::int16_t alpha_beta(GameState* state, std::int16_t alpha, std::int16_t beta,
 
 
         state->make_move(legal_moves[m]);
-        std::int16_t eval = -alpha_beta(state, -beta, -alpha, depth - 1);
+        std::int16_t eval;
+        std::uint64_t hash_value = TT[(state->hash_key) & 0x3ffffffULL];
+        if (!read(hash_value, 63) && clear(hash_value >> 26, 37) == clear(state->hash_key >> 26, 37))
+        {
+            eval = hash_value & 0xffff;
+            count++;
+        }
+        else
+        {
+            eval = -alpha_beta(state, -beta, -alpha, depth - 1, TT);
+            std::uint64_t val = static_cast<std::uint64_t>(eval);
+            val |= (clear(state->hash_key >> 26, 37) << 26);
+            TT[(state->hash_key) & 0x3ffffffULL] = val;
+        }
         state->unmake_move(legal_moves[m]);
 
         max_eval = std::max((int)max_eval, (int)eval);
