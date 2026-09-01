@@ -311,6 +311,11 @@ std::int16_t alpha_beta(GameState* state, std::int16_t alpha, std::int16_t beta,
 {
     //count++;
     if (depth == 0) {
+        if (state->in_check(state->white_to_move)) {
+            return -alpha_beta(state, -beta, -alpha, 1, TT);
+        }
+        
+        
         std::uint64_t inactive_player_composite;
         if (state->white_to_move)
         {
@@ -336,6 +341,7 @@ std::int16_t alpha_beta(GameState* state, std::int16_t alpha, std::int16_t beta,
 
         return state->evaluate() + hanging_material_bonus;
     }
+
     
     std::vector<std::uint16_t> legal_moves = state->get_legal_moves();
     if (legal_moves.size() == 0)

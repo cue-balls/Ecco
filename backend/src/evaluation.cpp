@@ -41,23 +41,22 @@ std::int16_t GameState::evaluate()
 
     if (adjusted_white_material + adjusted_black_material < 2800)
     {
-        //white_adv += white_eg_PST;
-        //black_adv += black_eg_PST;
+        white_adv += white_mg_PST;
+        black_adv += black_mg_PST;
     }
     else if (adjusted_white_material + adjusted_black_material <= 5300)
     {
-        //white_adv += white_mg_PST;
-        //black_adv += black_mg_PST;
+        white_adv += white_mg_PST;
+        black_adv += black_mg_PST;
     }
     else
     {
-        //white_adv += white_opening_PST;
-        //black_adv += black_opening_PST;
+        white_adv += white_opening_PST;
+        black_adv += black_opening_PST;
     }
 
 
-white_adv += white_opening_PST;
-        black_adv += black_opening_PST;
+
 
 /*
 
