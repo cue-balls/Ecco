@@ -6,6 +6,7 @@
 
 //basic bitwise stuff
 //only important consideration is that constants often must be cast to uint64_t
+//I should implement templates but I got lazy
 
 std::uint64_t primary_A = ~Bitwise::AFILE;
 std::uint64_t secondary_A = (primary_A << 1) & primary_A;
@@ -83,11 +84,15 @@ const std::vector<int> index64 = {
    13, 18,  8, 12,  7,  6,  5, 63
 };
 
+
+//finds the index of the first bit set to 1
 std::uint8_t bitscan_forward(std::uint64_t bitboard) {
    const std::uint64_t debruijn64 = 0x03f79d71b4cb0a89ULL;
    return index64[((bitboard ^ (bitboard-1)) * debruijn64) >> 58];
 }
 
+
+//finds the index of the last bit set to 1
 std::uint8_t bitscan_reverse(std::uint64_t bitboard) {
    const std::uint64_t debruijn64 = 0x03f79d71b4cb0a89ULL;
    bitboard |= bitboard >> 1; 
@@ -100,6 +105,7 @@ std::uint8_t bitscan_reverse(std::uint64_t bitboard) {
 }
 
 
+//returns vector with all set indices
 std::vector<std::uint8_t> serialize(std::uint64_t bitboard) {
     std::vector<uint8_t> indices;
 

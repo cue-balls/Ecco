@@ -3,6 +3,10 @@
 #include "PST.h"
 #include <vector>
 
+
+constexpr int TEMPO_BONUS = 20;
+
+
 std::int16_t GameState::evaluate()
 {
     int white_adv = 0;
@@ -122,10 +126,10 @@ std::int16_t GameState::evaluate()
 
 
     if (white_to_move) {
-        return white_adv - black_adv;
+        return white_adv + TEMPO_BONUS - black_adv;
     }
 
-    return black_adv - white_adv;
+    return black_adv + TEMPO_BONUS - white_adv;
 }
 
 

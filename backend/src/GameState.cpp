@@ -305,6 +305,7 @@ void GameState::make_move(std::uint16_t move)
 
 
 
+    //basic movement
     bitboards[moving_piece] ^= ((1ULL << target_square) | (1ULL << from_square));
     mailbox[target_square] = moving_piece;
     mailbox[from_square] = 255;
@@ -369,7 +370,7 @@ void GameState::make_move(std::uint16_t move)
             hash_key ^= zobrist_keys[target_square - 8];
         }
     }
-    else if (read(special_move_data, 2))
+    else if (read(special_move_data, 2)) //capture handling
     {
         bitboards[capture] = clear(bitboards[capture], target_square);
         bitboards[13 - color_shift] = clear(bitboards[13 - color_shift], target_square);
@@ -640,7 +641,7 @@ void GameState::unmake_move(std::uint16_t move)
     
 
     
-
+    //basic movement
     bitboards[moving_piece] ^= ((1ULL << from_square) | (1ULL << target_square));
     mailbox[from_square] = moving_piece;
     mailbox[target_square] = 255;
@@ -703,7 +704,7 @@ void GameState::unmake_move(std::uint16_t move)
             hash_key ^= zobrist_keys[target_square - 8];
         }
     }
-    else if (read(special_move_data, 2)) 
+    else if (read(special_move_data, 2)) //capture handling
     {
         bitboards[capture] = set(bitboards[capture], target_square);
         bitboards[13 - color_shift] = set(bitboards[13 - color_shift], target_square);
@@ -764,7 +765,7 @@ void GameState::unmake_move(std::uint16_t move)
             hash_key ^= zobrist_keys[9 * 64 + 7];
         }
     }
-    else if (special_move_data == 3)
+    else if (special_move_data == 3) //undoing queenside castle
     {
         if (moving_piece < 6)
         {

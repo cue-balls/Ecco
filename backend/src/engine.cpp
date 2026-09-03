@@ -310,9 +310,10 @@ int main() {
 std::int16_t alpha_beta(GameState* state, std::int16_t alpha, std::int16_t beta, int depth, std::vector<std::uint64_t>& TT)
 {
     //count++;
-    if (depth == 0) {
+    if (depth == 0) 
+    {
         if (state->in_check(state->white_to_move)) {
-            return -alpha_beta(state, -beta, -alpha, 1, TT);
+            return alpha_beta(state, alpha, beta, 1, TT);
         }
         
         
