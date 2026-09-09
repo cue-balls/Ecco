@@ -384,8 +384,8 @@ void GameState::make_move(std::uint16_t move)
         else
         {
             black_opening_PST -= PST[0][capture][target_square];
-            black_mg_PST -= PST[0][capture][target_square];
-            black_eg_PST -= PST[0][capture][target_square];
+            black_mg_PST -= PST[1][capture][target_square];
+            black_eg_PST -= PST[2][capture][target_square];
         }
 
         hash_key ^= zobrist_keys[adjusted_capture_id * 64 + target_square];
@@ -709,6 +709,7 @@ void GameState::unmake_move(std::uint16_t move)
         bitboards[capture] = set(bitboards[capture], target_square);
         bitboards[13 - color_shift] = set(bitboards[13 - color_shift], target_square);
         mailbox[target_square] = capture;
+
 
         if (capture < 6)
         {

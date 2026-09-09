@@ -33,12 +33,13 @@
 #include "bitwise.h"
 
 
-std::int16_t alpha_beta(GameState* state, std::int16_t alpha, std::int16_t beta, int depth, std::vector<std::uint64_t>& TT);
+std::int16_t alpha_beta(GameState* state, std::int16_t alpha, std::int16_t beta, int depth, std::vector<std::uint64_t>& TT, std::uint8_t extension_count);
 
 unsigned long long count = 0;
 
 //512MB allocation
 constexpr int TABLE_SIZE = 0x4000000;
+constexpr int SEARCH_DEPTH = 8;
 
 
 int main() {
@@ -77,6 +78,7 @@ int main() {
 
 
         std::vector<std::uint16_t> moves = game->get_legal_moves();
+
 
         std::string out;
         
@@ -130,7 +132,7 @@ int main() {
             }
             else //store TT entry
             {
-                eval = -alpha_beta(game, -beta, -alpha, 7, transposition_table);
+                eval = -alpha_beta(game, -beta, -alpha, SEARCH_DEPTH - 1, transposition_table, 0);
                 std::uint64_t val = static_cast<std::uint64_t>(eval);
                 val |= (clear(game->hash_key >> 26, 37) << 26);
                 transposition_table[(game->hash_key) & 0x3ffffffULL] = val;
@@ -147,35 +149,36 @@ int main() {
 
             alpha = std::max((int)alpha, (int)eval);
         }
-            std::cout << count << std::endl;
-            count = 0;
-            auto end = std::chrono::high_resolution_clock::now();
-            std::chrono::duration<double, std::milli> elapsed = end - start;
-            std::cout << elapsed << std::endl;
-            std::cout << (int)best_eval << std::endl;
+            
+        std::cout << count << std::endl;
+        count = 0;
+        auto end = std::chrono::high_resolution_clock::now();
+        std::chrono::duration<double, std::milli> elapsed = end - start;
+        std::cout << elapsed << std::endl;
+        std::cout << (int)best_eval << std::endl;
             
 
-            //formatting move to JSON
-            out += int_to_square(best_move & 63);
-            out += int_to_square((best_move >> 6) & 63);
+        //formatting move to JSON
+        out += int_to_square(best_move & 63);
+        out += int_to_square((best_move >> 6) & 63);
 
-            if (read(best_move, 15)) {
-                switch ((best_move >> 12) & 15) {
-                    case 8:
-                    case 12:
-                        out += 'n';
-                        break;
-                    case 9:
-                    case 13:
-                        out += 'b';
-                    case 10:
-                    case 14:
-                        out += 'r';
-                    case 11:
-                    case 15:
-                        out += 'q';
-                }
+        if (read(best_move, 15)) {
+            switch ((best_move >> 12) & 15) {
+                case 8:
+                case 12:
+                    out += 'n';
+                    break;
+                case 9:
+                case 13:
+                    out += 'b';
+                case 10:
+                case 14:
+                    out += 'r';
+                case 11:
+                case 15:
+                    out += 'q';
             }
+        }
 
         std::string json = "{\"move\":\"" + out + "\"}";
         res.set_content(json, "text/plain");
@@ -205,7 +208,7 @@ int main() {
 
 
 //DFS with alpha beta pruning
-std::int16_t alpha_beta(GameState* state, std::int16_t alpha, std::int16_t beta, int depth, std::vector<std::uint64_t>& TT)
+std::int16_t alpha_beta(GameState* state, std::int16_t alpha, std::int16_t beta, int depth, std::vector<std::uint64_t>& TT, std::uint8_t extension_count)
 {
     if (depth == 0) 
     {    
@@ -248,6 +251,15 @@ std::int16_t alpha_beta(GameState* state, std::int16_t alpha, std::int16_t beta,
         }
 
         return 0;
+    }
+
+
+    if (depth > 2 && extension_count < 2)
+    {
+        if (state->in_check(state->white_to_move)) {
+            depth++;
+            extension_count++;
+        }
     }
 
 
@@ -343,7 +355,7 @@ std::int16_t alpha_beta(GameState* state, std::int16_t alpha, std::int16_t beta,
         }
         else
         {
-            eval = -alpha_beta(state, -beta, -alpha, depth - 1, TT);
+            eval = -alpha_beta(state, -beta, -alpha, depth - 1, TT, extension_count);
             std::uint64_t val = static_cast<std::uint64_t>(eval);
             val |= (clear(state->hash_key >> 26, 37) << 26);
             TT[(state->hash_key) & 0x3ffffffULL] = val;
