@@ -36,6 +36,8 @@
 std::int16_t alpha_beta(GameState* state, std::int16_t alpha, std::int16_t beta, int depth, std::vector<std::uint64_t>& TT);
 
 unsigned long long count = 0;
+
+//512MB allocation
 constexpr int TABLE_SIZE = 0x4000000;
 
 
@@ -44,6 +46,7 @@ int main() {
     GameState::populate_attacks();
     GameState::generate_hash_keys();
 
+    //setting up server
     svr.Options(R"(/.*)", [](const httplib::Request& req, httplib::Response& res) {
         res.set_header("Access-Control-Allow-Origin", "*");
         res.set_header("Access-Control-Allow-Methods", "POST, GET, OPTIONS");
@@ -52,13 +55,24 @@ int main() {
     });
     
 
+    //handling post requests
     svr.Post("/data", [](const httplib::Request& req, httplib::Response& res) {
         res.set_header("Access-Control-Allow-Origin", "*");
 
         std::cout << "received" << std::endl;
 
         GameState * game = new GameState(req.body);
+
+
         std::vector<std::uint64_t> transposition_table(TABLE_SIZE, 0x8000000000000000);
+
+        //structure of a TT entry is as follows:
+        //first 16 bits: eval of the position
+        //next 10 bits: blank
+        //next 37 bits: hash lock
+        //last bit: blank
+        //the hash lock begins after the 26th bit because the first 26 bits are already accounted for by the current pos hash key
+
         std::cout << req.body << std::endl;
 
 
@@ -75,6 +89,7 @@ int main() {
 
 
 
+        //move ordering
         std::vector<std::pair<std::uint16_t, std::int16_t>> evaluated_moves;
 
         for (std::uint16_t move : moves) {
@@ -96,19 +111,24 @@ int main() {
         }
 
 
+        //searching moves
         for (int i = 0; i < moves.size(); i++)
         {
             std::uint16_t m = moves[i];
             game->make_move(m);
 
             std::int16_t eval;
+
+            //extracting first 26 bits from hash key
             std::uint64_t hash_value = transposition_table[(game->hash_key) & 0x3ffffffULL];
+
+            //checking hash lock
             if (!read(hash_value, 63) && clear(hash_value >> 26, 37) == clear(game->hash_key >> 26, 37))
             {
                 eval = hash_value & 0xffff;
                 count++;
             }
-            else
+            else //store TT entry
             {
                 eval = -alpha_beta(game, -beta, -alpha, 7, transposition_table);
                 std::uint64_t val = static_cast<std::uint64_t>(eval);
@@ -135,6 +155,7 @@ int main() {
             std::cout << (int)best_eval << std::endl;
             
 
+            //formatting move to JSON
             out += int_to_square(best_move & 63);
             out += int_to_square((best_move >> 6) & 63);
 
@@ -183,16 +204,12 @@ int main() {
 
 
 
-
+//DFS with alpha beta pruning
 std::int16_t alpha_beta(GameState* state, std::int16_t alpha, std::int16_t beta, int depth, std::vector<std::uint64_t>& TT)
 {
     if (depth == 0) 
-    {
-        if (state->in_check(state->white_to_move)) {
-            return alpha_beta(state, alpha, beta, 1, TT);
-        }
-        
-        
+    {    
+        //handling hanging material to avoid the horizon effect
         std::uint64_t inactive_player_composite;
         if (state->white_to_move)
         {
@@ -224,7 +241,9 @@ std::int16_t alpha_beta(GameState* state, std::int16_t alpha, std::int16_t beta,
     std::vector<std::uint16_t> legal_moves = state->get_legal_moves();
     if (legal_moves.size() == 0)
     {
+        //checkmate/stalemate handling
         if (state->in_check(state->white_to_move)) {
+            //depth is subtracted so that engine delays checkmate as much as possible
             return -32000 - depth;
         }
 
@@ -232,7 +251,6 @@ std::int16_t alpha_beta(GameState* state, std::int16_t alpha, std::int16_t beta,
     }
 
 
-    std::int16_t root_eval = state->evaluate();
     std::int16_t max_eval = -32500;
     
     /*std::vector<std::int16_t> evaluation_list(legal_moves.size());
@@ -287,6 +305,7 @@ std::int16_t alpha_beta(GameState* state, std::int16_t alpha, std::int16_t beta,
         }
     }*/
 
+    //move ordering
     std::vector<std::pair<std::uint16_t, std::int16_t>> evaluated_moves;
 
     for (std::uint16_t move : legal_moves) {
@@ -308,6 +327,7 @@ std::int16_t alpha_beta(GameState* state, std::int16_t alpha, std::int16_t beta,
 
 
 
+    //move search
     for (int i = 0; i < legal_moves.size(); i++)
     {
         std::uint16_t m = legal_moves[i];
@@ -337,6 +357,7 @@ std::int16_t alpha_beta(GameState* state, std::int16_t alpha, std::int16_t beta,
         max_eval = std::max((int)max_eval, (int)eval);
         alpha = std::max((int)alpha, (int)eval);
 
+        //a-b pruning condition
         if (alpha >= beta) {
             break;
         }

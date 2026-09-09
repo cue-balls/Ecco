@@ -4,7 +4,7 @@
 #include <vector>
 
 
-constexpr int TEMPO_BONUS = 20;
+constexpr int TEMPO_BONUS = 15;
 
 
 std::int16_t GameState::evaluate()
