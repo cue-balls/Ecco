@@ -62,69 +62,6 @@ std::int16_t GameState::evaluate()
 
 
 
-/*
-
-    for (std::uint8_t p : white_pieces)
-    {
-        white_PST += PST[game_phase][mailbox[p]][p];
-
-
-        if (white_to_move | mailbox[p] == 5 ) {
-            continue;
-        }
-
-        std::int16_t delta = see(p, white_to_move);
-
-        if (delta) {
-            delta += PST[game_phase][mailbox[p]][p];
-        }
-
-        largest_see = std::max((int)largest_see, (int)delta);
-    }
-
-
-    for (std::uint8_t p : black_pieces)
-    {
-        black_PST += PST[game_phase][mailbox[p]][p];
-
-
-        if (!white_to_move | mailbox[p] == 12) {
-            continue;
-        }
-
-        std::int16_t delta = see(p, white_to_move);
-
-        if (delta) {
-            delta += PST[game_phase][mailbox[p]][p];
-        }
-
-        largest_see = std::max((int)largest_see, (int)delta);
-    }
-
-
-    white_adv += white_material;
-    black_adv += black_material;
-
-
-    if (white_to_move) 
-    {
-        black_adv -= largest_see;
-    }
-    else
-    {
-        white_adv -= largest_see;
-    }
-
-
-    white_adv += white_PST;
-    black_adv += black_PST;
-
-
-    
-*/
-
-
-
     if (white_to_move) {
         return white_adv + TEMPO_BONUS - black_adv;
     }
@@ -157,6 +94,8 @@ std::uint8_t GameState::get_smallest_attacker(std::uint8_t square, bool side)
 {
     std::uint8_t color_shift = 0;
     std::uint64_t attacks;
+    
+    //pawn attacks
     if (side)
     {
         attacks = (bitboards[0] >> 7) & ~Bitwise::AFILE;
@@ -197,16 +136,20 @@ std::uint8_t GameState::get_smallest_attacker(std::uint8_t square, bool side)
     }
 
 
+    //knight attacks
     attacks = piece_attacks[0][square] & bitboards[1 + color_shift];
-    if (attacks) {
+    while (attacks) {
         std::uint8_t from_square = bitscan_forward(attacks);
         std::uint16_t move = 0x4000 | (square << 6) | from_square;
         if (validate_move(move)) {
             return from_square;
         }
+
+        attacks = clear(attacks, from_square);
     }
 
 
+    //bishop attacks
     attacks = piece_attacks[1][square];
     attacks = occlude_northeast(attacks, bitboards[6] | bitboards[13], square);
     attacks = occlude_southeast(attacks, bitboards[6] | bitboards[13], square);
@@ -214,15 +157,18 @@ std::uint8_t GameState::get_smallest_attacker(std::uint8_t square, bool side)
     attacks = occlude_southwest(attacks, bitboards[6] | bitboards[13], square);
     attacks &= bitboards[2 + color_shift];
 
-    if (attacks) {
+    while (attacks) {
         std::uint8_t from_square = bitscan_forward(attacks);
         std::uint16_t move = 0x4000 | (square << 6) | from_square;
         if (validate_move(move)) {
             return from_square;
         }
+
+        attacks = clear(attacks, from_square);
     }
 
 
+    //rook attacks
     attacks = piece_attacks[2][square];
     attacks = occlude_north(attacks, bitboards[6] | bitboards[13], square);
     attacks = occlude_south(attacks, bitboards[6] | bitboards[13], square);
@@ -230,15 +176,18 @@ std::uint8_t GameState::get_smallest_attacker(std::uint8_t square, bool side)
     attacks = occlude_east(attacks, bitboards[6] | bitboards[13], square);
     attacks &= bitboards[3 + color_shift];
 
-    if (attacks) {
+    while (attacks) {
         std::uint8_t from_square = bitscan_forward(attacks);
         std::uint16_t move = 0x4000 | (square << 6) | from_square;
         if (validate_move(move)) {
             return from_square;
         }
+
+        attacks = clear(attacks, from_square);
     }
 
 
+    //queen attacks
     attacks = piece_attacks[3][square];
     attacks = occlude_north(attacks, bitboards[6] | bitboards[13], square);
     attacks = occlude_south(attacks, bitboards[6] | bitboards[13], square);
@@ -250,15 +199,18 @@ std::uint8_t GameState::get_smallest_attacker(std::uint8_t square, bool side)
     attacks = occlude_southwest(attacks, bitboards[6] | bitboards[13], square);
     attacks &= bitboards[4 + color_shift];
 
-    if (attacks) {
+    while (attacks) {
         std::uint8_t from_square = bitscan_forward(attacks);
         std::uint16_t move = 0x4000 | (square << 6) | from_square;
         if (validate_move(move)) {
             return from_square;
         }
+
+        attacks = clear(attacks, from_square);
     }
 
 
+    //king attacks
     attacks = piece_attacks[4][square] & bitboards[5 + color_shift];
     if (attacks) {
         std::uint8_t from_square = bitscan_forward(attacks);
