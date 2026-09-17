@@ -212,6 +212,11 @@ std::int16_t alpha_beta(GameState* state, std::int16_t alpha, std::int16_t beta,
 {
     if (depth == 0) 
     {    
+        //check extensions
+        if (state->in_check(!state->white_to_move)) {
+            return alpha_beta(state, alpha, beta, 1, TT, extension_count) - 10;
+        }
+
         //handling hanging material to avoid the horizon effect
         std::uint64_t inactive_player_composite;
         if (state->white_to_move)
