@@ -71,7 +71,8 @@ std::int16_t GameState::evaluate()
 
 
 
-
+//calculates estimated material exchange on a square by simulating captures and recaptures
+//effectively determines if a sequence of captures wins material on a given square
 std::int16_t GameState::see(std::uint8_t square, bool side)
 {
     std::int16_t val = 0;

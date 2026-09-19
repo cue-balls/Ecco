@@ -137,6 +137,11 @@ int main() {
                 val |= (clear(game->hash_key >> 26, 37) << 26);
                 transposition_table[(game->hash_key) & 0x3ffffffULL] = val;
             }
+
+            //debugging - remove later
+            if (moves[i] == 12220) {
+                std::cout << "balls " << (int)eval << std::endl;
+            }
                 
 
             game->unmake_move(m);
