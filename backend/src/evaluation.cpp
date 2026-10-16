@@ -45,8 +45,8 @@ std::int16_t GameState::evaluate()
 
     if (adjusted_white_material + adjusted_black_material < 2800)
     {
-        white_adv += white_mg_PST;
-        black_adv += black_mg_PST;
+        white_adv += white_eg_PST;
+        black_adv += black_eg_PST;
     }
     else if (adjusted_white_material + adjusted_black_material <= 5300)
     {
@@ -59,7 +59,45 @@ std::int16_t GameState::evaluate()
         black_adv += black_opening_PST;
     }
 
+    int white_king_safety = 0;
+    int black_king_safety = 0;
 
+    std::uint8_t king_square = bitscan_forward(bitboards[5]);
+    white_king_safety += 3 * std::popcount(piece_attacks[4][king_square] & ~(bitboards[6] | bitboards[13]));
+    
+    std::uint64_t rays = piece_attacks[3][king_square];
+    rays = occlude_northeast(rays, bitboards[6] | bitboards[13], king_square);
+    rays = occlude_northwest(rays, bitboards[6] | bitboards[13], king_square);
+    rays = occlude_southeast(rays, bitboards[6] | bitboards[13], king_square);
+    rays = occlude_southwest(rays, bitboards[6] | bitboards[13], king_square);
+    rays = occlude_north(rays, bitboards[6] | bitboards[13], king_square);
+    rays = occlude_west(rays, bitboards[6] | bitboards[13], king_square);
+    rays = occlude_east(rays, bitboards[6] | bitboards[13], king_square);
+    rays = occlude_south(rays, bitboards[6] | bitboards[13], king_square);
+    rays &= ~bitboards[6];
+
+    white_king_safety -= 2 * std::popcount(rays);
+    
+
+    king_square = bitscan_forward(bitboards[12]);
+    black_king_safety += 3 * std::popcount(piece_attacks[4][king_square] & ~(bitboards[6] | bitboards[13]));
+
+    rays = piece_attacks[3][king_square];
+    rays = occlude_northeast(rays, bitboards[6] | bitboards[13], king_square);
+    rays = occlude_northwest(rays, bitboards[6] | bitboards[13], king_square);
+    rays = occlude_southeast(rays, bitboards[6] | bitboards[13], king_square);
+    rays = occlude_southwest(rays, bitboards[6] | bitboards[13], king_square);
+    rays = occlude_north(rays, bitboards[6] | bitboards[13], king_square);
+    rays = occlude_west(rays, bitboards[6] | bitboards[13], king_square);
+    rays = occlude_east(rays, bitboards[6] | bitboards[13], king_square);
+    rays = occlude_south(rays, bitboards[6] | bitboards[13], king_square);
+    rays &= ~bitboards[13];
+
+    black_king_safety -= 2 * std::popcount(rays);
+
+
+    white_adv += white_king_safety;
+    black_adv += black_king_safety;
 
 
     if (white_to_move) {
