@@ -42,6 +42,8 @@ GameState::GameState(std::string FEN) : bitboards(14), white_to_move(true) {
     black_opening_PST = 0;
     black_mg_PST = 0;
     black_eg_PST = 0;
+    white_pawn_structure = 0;
+    black_pawn_structure = 0;
     
     int i;
     for (i = 0; i < 14; i++) {
@@ -169,6 +171,18 @@ GameState::GameState(std::string FEN) : bitboards(14), white_to_move(true) {
     state_stack.push_back(current_state);
 
 
+    //evluating pawn structure
+    for (std::uint64_t FILE : Bitwise::FILE_LIST)
+    {
+        //num of pawns minus 1 multiplied by a penalty
+        //must be min with 0 in case a file contains no pawns of that color
+        white_pawn_structure += std::min(0, (std::popcount(FILE & bitboards[0]) - 1) * PAWN_STRUCTURE_PENALTY);
+        black_pawn_structure += std::min(0, (std::popcount(FILE & bitboards[7]) - 1) * PAWN_STRUCTURE_PENALTY);
+    }
+
+
+
+
     //initial hashing of position
     hash_key = 0;
     for (int square = 0; square < 64; square++)
@@ -255,6 +269,9 @@ void GameState::make_move(std::uint16_t move)
     std::uint8_t adjusted_capture_id = capture;
     std::uint8_t adjusted_color_shift = 0;
 
+    std::uint64_t white_pawns = bitboards[0];
+    std::uint64_t black_pawns = bitboards[7];
+    
 
     std::uint8_t color_shift = 0;
     if (moving_piece > 6) 
@@ -310,6 +327,30 @@ void GameState::make_move(std::uint16_t move)
     mailbox[target_square] = moving_piece;
     mailbox[from_square] = 255;
 
+
+    //updating pawn structure penalty
+    if (moving_piece == 0 && read(special_move_data, 2))
+    {
+        std::uint64_t start_file = Bitwise::FILE_LIST[from_square % 8];
+        std::uint64_t end_file = Bitwise::FILE_LIST[target_square % 8];
+
+        white_pawn_structure -= std::min(0, (std::popcount(start_file & white_pawns) - 1) * PAWN_STRUCTURE_PENALTY);
+        white_pawn_structure -= std::min(0, (std::popcount(end_file & white_pawns) - 1) * PAWN_STRUCTURE_PENALTY);
+        white_pawn_structure += std::min(0, (std::popcount(start_file & bitboards[0]) - 1) * PAWN_STRUCTURE_PENALTY);
+        white_pawn_structure += std::min(0, (std::popcount(end_file & bitboards[0]) - 1) * PAWN_STRUCTURE_PENALTY);
+    }
+    else if (moving_piece == 7 && read(special_move_data, 2))
+    {
+        std::uint64_t start_file = Bitwise::FILE_LIST[from_square % 8];
+        std::uint64_t end_file = Bitwise::FILE_LIST[target_square % 8];
+
+        black_pawn_structure -= std::min(0, (std::popcount(start_file & black_pawns) - 1) * PAWN_STRUCTURE_PENALTY);
+        black_pawn_structure -= std::min(0, (std::popcount(end_file & black_pawns) - 1) * PAWN_STRUCTURE_PENALTY);
+        black_pawn_structure += std::min(0, (std::popcount(start_file & bitboards[7]) - 1) * PAWN_STRUCTURE_PENALTY);
+        black_pawn_structure += std::min(0, (std::popcount(end_file & bitboards[7]) - 1) * PAWN_STRUCTURE_PENALTY);
+    }
+
+
     if (moving_piece < 6)
     {
         white_opening_PST -= PST[0][moving_piece][from_square];
@@ -355,6 +396,11 @@ void GameState::make_move(std::uint16_t move)
 
             capture = 7;
             hash_key ^= zobrist_keys[6 * 64 + target_square + 8];
+
+
+            std::uint64_t capture_file = Bitwise::FILE_LIST[target_square % 8];
+            black_pawn_structure -= std::min(0, (std::popcount(capture_file & black_pawns) - 1) * PAWN_STRUCTURE_PENALTY);
+            black_pawn_structure += std::min(0, (std::popcount(capture_file & bitboards[7]) - 1) * PAWN_STRUCTURE_PENALTY);
         }
         else
         {
@@ -368,6 +414,10 @@ void GameState::make_move(std::uint16_t move)
 
             capture = 0;
             hash_key ^= zobrist_keys[target_square - 8];
+
+            std::uint64_t capture_file = Bitwise::FILE_LIST[target_square % 8];
+            white_pawn_structure -= std::min(0, (std::popcount(capture_file & white_pawns) - 1) * PAWN_STRUCTURE_PENALTY);
+            white_pawn_structure += std::min(0, (std::popcount(capture_file & bitboards[0]) - 1) * PAWN_STRUCTURE_PENALTY);
         }
     }
     else if (read(special_move_data, 2)) //capture handling
@@ -380,12 +430,26 @@ void GameState::make_move(std::uint16_t move)
             white_opening_PST -= PST[0][capture][target_square];
             white_mg_PST -= PST[1][capture][target_square];
             white_eg_PST -= PST[2][capture][target_square];
+
+            if (capture == 0)
+            {
+                std::uint64_t capture_file = Bitwise::FILE_LIST[target_square % 8];
+                white_pawn_structure -= std::min(0, (std::popcount(capture_file & white_pawns) - 1) * PAWN_STRUCTURE_PENALTY);
+                white_pawn_structure += std::min(0, (std::popcount(capture_file & bitboards[0]) - 1) * PAWN_STRUCTURE_PENALTY);
+            }
         }
         else
         {
             black_opening_PST -= PST[0][capture][target_square];
             black_mg_PST -= PST[1][capture][target_square];
             black_eg_PST -= PST[2][capture][target_square];
+
+            if (capture == 7)
+            {
+                std::uint64_t capture_file = Bitwise::FILE_LIST[target_square % 8];
+                black_pawn_structure -= std::min(0, (std::popcount(capture_file & black_pawns) - 1) * PAWN_STRUCTURE_PENALTY);
+                black_pawn_structure += std::min(0, (std::popcount(capture_file & bitboards[7]) - 1) * PAWN_STRUCTURE_PENALTY);
+            }
         }
 
         hash_key ^= zobrist_keys[adjusted_capture_id * 64 + target_square];
@@ -478,6 +542,9 @@ void GameState::make_move(std::uint16_t move)
     //this block handles promotion moves
     if (read(special_move_data, 3))
     {
+        white_pawns = bitboards[0];
+        black_pawns = bitboards[7];
+
         switch (special_move_data) {
             
             //knight promotion
@@ -576,6 +643,19 @@ void GameState::make_move(std::uint16_t move)
                 hash_key ^= zobrist_keys[(4 + adjusted_color_shift) * 64 + target_square];
                 break;
         }
+
+        if (moving_piece == 0)
+        {
+            std::uint64_t promotion_file = Bitwise::FILE_LIST[target_square % 8];
+            white_pawn_structure -= std::min(0, (std::popcount(promotion_file & white_pawns) - 1) * PAWN_STRUCTURE_PENALTY);
+            white_pawn_structure += std::min(0, (std::popcount(promotion_file & bitboards[0]) - 1) * PAWN_STRUCTURE_PENALTY);
+        }
+        else
+        {
+            std::uint64_t promotion_file = Bitwise::FILE_LIST[target_square % 8];
+            black_pawn_structure -= std::min(0, (std::popcount(promotion_file & black_pawns) - 1) * PAWN_STRUCTURE_PENALTY);
+            black_pawn_structure += std::min(0, (std::popcount(promotion_file & bitboards[7]) - 1) * PAWN_STRUCTURE_PENALTY);
+        }
     }
 
 
@@ -609,6 +689,9 @@ void GameState::unmake_move(std::uint16_t move)
     std::uint8_t adjusted_capture_id = capture;
     std::uint8_t adjusted_color_shift = 0;
     std::uint8_t color_shift = 0;
+
+    std::uint64_t white_pawns = bitboards[0];
+    std::uint64_t black_pawns = bitboards[7];
     
     
     if (moving_piece > 6) 
@@ -645,6 +728,29 @@ void GameState::unmake_move(std::uint16_t move)
     bitboards[moving_piece] ^= ((1ULL << from_square) | (1ULL << target_square));
     mailbox[from_square] = moving_piece;
     mailbox[target_square] = 255;
+
+
+    if (moving_piece == 0 && read(special_move_data, 2))
+    {
+        std::uint64_t start_file = Bitwise::FILE_LIST[target_square % 8];
+        std::uint64_t end_file = Bitwise::FILE_LIST[from_square % 8];
+
+        white_pawn_structure -= std::min(0, (std::popcount(start_file & white_pawns) - 1) * PAWN_STRUCTURE_PENALTY);
+        white_pawn_structure -= std::min(0, (std::popcount(end_file & white_pawns) - 1) * PAWN_STRUCTURE_PENALTY);
+        white_pawn_structure += std::min(0, (std::popcount(start_file & bitboards[0]) - 1) * PAWN_STRUCTURE_PENALTY);
+        white_pawn_structure += std::min(0, (std::popcount(end_file & bitboards[0]) - 1) * PAWN_STRUCTURE_PENALTY);
+    }
+    else if (moving_piece == 7 && read(special_move_data, 2))
+    {
+        std::uint64_t start_file = Bitwise::FILE_LIST[target_square % 8];
+        std::uint64_t end_file = Bitwise::FILE_LIST[from_square % 8];
+
+        black_pawn_structure -= std::min(0, (std::popcount(start_file & black_pawns) - 1) * PAWN_STRUCTURE_PENALTY);
+        black_pawn_structure -= std::min(0, (std::popcount(end_file & black_pawns) - 1) * PAWN_STRUCTURE_PENALTY);
+        black_pawn_structure += std::min(0, (std::popcount(start_file & bitboards[7]) - 1) * PAWN_STRUCTURE_PENALTY);
+        black_pawn_structure += std::min(0, (std::popcount(end_file & bitboards[7]) - 1) * PAWN_STRUCTURE_PENALTY);
+    }
+
 
 
     if (moving_piece < 6)
@@ -690,6 +796,10 @@ void GameState::unmake_move(std::uint16_t move)
             black_eg_PST += PST[2][7][target_square + 8];
 
             hash_key ^= zobrist_keys[6 * 64 + target_square + 8];
+
+            std::uint64_t capture_file = Bitwise::FILE_LIST[target_square % 8];
+            black_pawn_structure -= std::min(0, (std::popcount(capture_file & black_pawns) - 1) * PAWN_STRUCTURE_PENALTY);
+            black_pawn_structure += std::min(0, (std::popcount(capture_file & bitboards[7]) - 1) * PAWN_STRUCTURE_PENALTY);
         }
         else
         {
@@ -702,6 +812,10 @@ void GameState::unmake_move(std::uint16_t move)
             white_eg_PST += PST[2][0][target_square - 8];
 
             hash_key ^= zobrist_keys[target_square - 8];
+
+            std::uint64_t capture_file = Bitwise::FILE_LIST[target_square % 8];
+            white_pawn_structure -= std::min(0, (std::popcount(capture_file & white_pawns) - 1) * PAWN_STRUCTURE_PENALTY);
+            white_pawn_structure += std::min(0, (std::popcount(capture_file & bitboards[0]) - 1) * PAWN_STRUCTURE_PENALTY);
         }
     }
     else if (read(special_move_data, 2)) //capture handling
@@ -716,12 +830,26 @@ void GameState::unmake_move(std::uint16_t move)
             white_opening_PST += PST[0][capture][target_square];
             white_mg_PST += PST[1][capture][target_square];
             white_eg_PST += PST[2][capture][target_square];
+
+            if (capture == 0)
+            {
+                std::uint64_t capture_file = Bitwise::FILE_LIST[target_square % 8];
+                white_pawn_structure -= std::min(0, (std::popcount(capture_file & white_pawns) - 1) * PAWN_STRUCTURE_PENALTY);
+                white_pawn_structure += std::min(0, (std::popcount(capture_file & bitboards[0]) - 1) * PAWN_STRUCTURE_PENALTY);
+            }
         }
         else
         {
             black_opening_PST += PST[0][capture][target_square];
             black_mg_PST += PST[1][capture][target_square];
             black_eg_PST += PST[2][capture][target_square];
+
+            if (capture == 7)
+            {
+                std::uint64_t capture_file = Bitwise::FILE_LIST[target_square % 8];
+                black_pawn_structure -= std::min(0, (std::popcount(capture_file & black_pawns) - 1) * PAWN_STRUCTURE_PENALTY);
+                black_pawn_structure += std::min(0, (std::popcount(capture_file & bitboards[7]) - 1) * PAWN_STRUCTURE_PENALTY);
+            }
         }
 
         hash_key ^= zobrist_keys[adjusted_capture_id * 64 + target_square];
@@ -808,10 +936,13 @@ void GameState::unmake_move(std::uint16_t move)
     
     
     
-    
+
     
     if (read(special_move_data, 3)) //undoing promotion
     {
+        white_pawns = bitboards[0];
+        black_pawns = bitboards[7];
+
         switch (special_move_data) {
             case 8:
             case 12:
@@ -926,6 +1057,19 @@ void GameState::unmake_move(std::uint16_t move)
                 hash_key ^= zobrist_keys[adjusted_color_shift * 64 + from_square];
                 hash_key ^= zobrist_keys[(4 + adjusted_color_shift) * 64 + from_square];
                 break;
+        }
+
+        if (moving_piece < 6)
+        {
+            std::uint64_t promotion_file = Bitwise::FILE_LIST[from_square % 8];
+            white_pawn_structure -= std::min(0, (std::popcount(promotion_file & white_pawns) - 1) * PAWN_STRUCTURE_PENALTY);
+            white_pawn_structure += std::min(0, (std::popcount(promotion_file & bitboards[0]) - 1) * PAWN_STRUCTURE_PENALTY);
+        }
+        else
+        {
+            std::uint64_t promotion_file = Bitwise::FILE_LIST[from_square % 8];
+            black_pawn_structure -= std::min(0, (std::popcount(promotion_file & black_pawns) - 1) * PAWN_STRUCTURE_PENALTY);
+            black_pawn_structure += std::min(0, (std::popcount(promotion_file & bitboards[7]) - 1) * PAWN_STRUCTURE_PENALTY);
         }
     }
 

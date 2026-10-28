@@ -59,6 +59,11 @@ std::int16_t GameState::evaluate()
         black_adv += black_opening_PST;
     }
 
+
+    white_adv += white_pawn_structure;
+    black_adv += black_pawn_structure;
+
+
     int white_king_safety = 0;
     int black_king_safety = 0;
 

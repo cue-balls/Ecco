@@ -27,6 +27,8 @@ class GameState {
         std::int16_t black_opening_PST;
         std::int16_t black_mg_PST;
         std::int16_t black_eg_PST;
+        std::int16_t white_pawn_structure;
+        std::int16_t black_pawn_structure;
         bool white_to_move;
 
         //piece lookup array
@@ -34,6 +36,7 @@ class GameState {
         inline static const int piece_value[] = {100, 300, 320, 500, 900, 30000, 0, 100, 300, 320, 500, 900, 30000, 0};
         inline static std::uint64_t piece_attacks[5][64];
         inline static std::vector<std::uint64_t> zobrist_keys;
+        inline static constexpr int PAWN_STRUCTURE_PENALTY = -25;
         
         GameState(std::string FEN);
         void view_gamestate();
